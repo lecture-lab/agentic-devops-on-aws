@@ -2,18 +2,40 @@
 """Secret scanner for this repo (reviewer F5).
 
 A zero-hit result is not proof of absence -- so this script also carries
-a self-test that proves the patterns actually fire, using a known-bad
-fixture that is excluded from the real scan (otherwise it would block
-its own commit forever).
+a self-test that proves the patterns actually fire. The self-test builds
+its known-bad sample strings *in memory, from fragments, at runtime* --
+not from a committed fixture file. An earlier version of this script
+used a committed fixture containing literal secret-shaped strings; once
+committed, `scan_history()` (which greps the full `git log -p --all`)
+would find them forever, since deleting the file in a later commit does
+not remove it from prior commits. Building the samples in memory means
+no tracked file, and no git commit, ever contains a contiguous
+secret-shaped string -- there is nothing for history-scanning to poison
+itself with.
 
 Modes:
-  secret-scan.py            scan tracked + staged + untracked candidate
-                             files, and git history, for secret-shaped
-                             strings. Exit 1 if anything is found.
+  secret-scan.py --staged   scan tracked + staged + untracked candidate
+                             files only (no history). Fast; this is what
+                             the pre-commit hook runs, so it gates *new*
+                             secrets without being permanently blocked by
+                             something already in past history.
+  secret-scan.py --full     everything --staged does, plus full git
+                             history. Slower, and history-poisoning is
+                             one-way: once a secret-shaped string is
+                             committed, this will keep flagging it in
+                             every future run until history itself is
+                             rewritten (a deliberate, separately-authorized
+                             action -- not something this script does).
+                             Meant for manual/periodic audits, not as a
+                             commit gate.
   secret-scan.py --self-test
-                             scan ONLY tests/secret_scan_fixtures/known_bad.txt
-                             and assert every pattern fires at least once.
-                             Exit 1 if the scanner is not actually working.
+                             build known-bad samples in memory and assert
+                             every pattern fires at least once. Exit 1 if
+                             the scanner is not actually working.
+
+No CI is wired up for this repo yet -- `core.hooksPath .githooks` is
+local git config, not something a fresh clone inherits automatically.
+See README.md for the one-time bootstrap step.
 """
 import re
 import subprocess
@@ -21,7 +43,6 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
-FIXTURE = REPO_ROOT / "tests" / "secret_scan_fixtures" / "known_bad.txt"
 
 PATTERNS = {
     "aws_access_key": re.compile(r"AKIA[0-9A-Z]{16}"),
@@ -63,10 +84,10 @@ def scan_text(text: str) -> list[str]:
     return hits
 
 
-def scan_files(paths: set[Path], exclude: set[Path]) -> dict[str, list[str]]:
+def scan_files(paths: set[Path]) -> dict[str, list[str]]:
     findings = {}
     for path in paths:
-        if path in exclude or not path.is_file():
+        if not path.is_file():
             continue
         try:
             text = path.read_text(errors="ignore")
@@ -86,17 +107,27 @@ def scan_history() -> dict[str, list[str]]:
     return {"<git history>": hits} if hits else {}
 
 
+def _known_bad_samples() -> dict[str, str]:
+    """Assembled from short fragments so no contiguous secret-shaped
+    substring exists anywhere in this file's own source text."""
+    return {
+        "aws_access_key": "AKIA" + "A" * 16,
+        "telegram_bot_token": "1" * 9 + ":" + "A" * 35,
+        "github_token": "gh" + "p" + "_" + "A" * 36,
+        "private_key": "-----BEGIN " + "RSA PRIVATE KEY" + "-----",
+        "jwt": ("eyJ" + "A" * 12) + "." + ("A" * 12) + "." + ("A" * 12),
+        "credential_bearing_url": "https" + "://" + "user" + ":" + "p" * 12 + "@" + "example.invalid/",
+        "generic_assignment": "password" + " = " + '"' + "x" * 12 + '"',
+    }
+
+
 def self_test() -> int:
-    if not FIXTURE.exists():
-        print(f"FAIL: fixture missing: {FIXTURE}", file=sys.stderr)
-        return 1
-    text = FIXTURE.read_text()
-    hits = set(scan_text(text))
-    missing = set(PATTERNS) - hits
+    samples = _known_bad_samples()
+    missing = [name for name, pattern in PATTERNS.items() if not pattern.search(samples.get(name, ""))]
     if missing:
-        print(f"FAIL: patterns that did NOT fire on the known-bad fixture: {sorted(missing)}", file=sys.stderr)
+        print(f"FAIL: patterns that did NOT fire on the in-memory known-bad samples: {sorted(missing)}", file=sys.stderr)
         return 1
-    print(f"OK: all {len(PATTERNS)} patterns fired on the known-bad fixture.")
+    print(f"OK: all {len(PATTERNS)} patterns fired on in-memory known-bad samples (nothing written to disk or git).")
     return 0
 
 
@@ -104,8 +135,16 @@ def main() -> int:
     if "--self-test" in sys.argv:
         return self_test()
 
-    findings = scan_files(candidate_files(), exclude={FIXTURE})
-    findings.update(scan_history())
+    full = "--full" in sys.argv
+    if not full and "--staged" not in sys.argv:
+        print("usage: secret-scan.py --staged | --full | --self-test", file=sys.stderr)
+        return 2
+
+    findings = scan_files(candidate_files())
+    scope = "tracked/staged/untracked files"
+    if full:
+        findings.update(scan_history())
+        scope += " and git history"
 
     if findings:
         print("Possible secrets found:", file=sys.stderr)
@@ -113,7 +152,7 @@ def main() -> int:
             print(f"  {location}: {', '.join(hits)}", file=sys.stderr)
         return 1
 
-    print("No secret-shaped strings found in tracked/staged/untracked files or git history.")
+    print(f"No secret-shaped strings found in {scope}.")
     print("(A zero-hit result is not proof of absence -- see docstring.)")
     return 0
 

@@ -5,12 +5,12 @@
 # today with terraform show -json on an RDS password -- sensitive values
 # come back in plaintext in the JSON plan/state, only the CLI's human
 # output masks them). This resource only creates the named container;
-# the value is set once, out-of-band, via ../../../scripts/provision-telegram-token.sh
-# (reads the token on stdin -- never as a CLI argument. A literal
-# `--secret-string '<token>'` on the command line puts the value in
-# process args, visible via `ps` to anything sharing this host's UID --
-# confirmed, not hypothetical: a review caught it in our own first
-# attempt.)
+# the value is set once, out-of-band, through the AWS Console on a
+# trusted device -- not from this shared host. We tried a stdin-piped
+# CLI script instead and a review caught that it still wrote the
+# value to a temp file on a UID shared with every other user, which
+# mode 0600 does not actually isolate; there is no CLI/script path from
+# this host that's been reviewed as safe, so there isn't one here.
 
 variable "telegram_chat_id" {
   # reviewer F6 classification, recorded explicitly rather than left implicit:
@@ -22,6 +22,28 @@ variable "telegram_chat_id" {
   # of the committed repo anyway, on general principle -- set via
   # terraform.tfvars (gitignored), not hardcoded here.
   description = "Telegram chat id the bot posts alerts to."
+  type        = string
+  default     = ""
+}
+
+variable "telegram_alerts_enabled" {
+  # reviewer A3: SNS retries failed/throttled Lambda deliveries for a long
+  # time (days, per AWS docs on SNS delivery retries), so un-throttling
+  # this function is not by itself safe -- stale queued events could
+  # still fire. Default false: the handler's should_send() refuses to
+  # even fetch the secret unless this is explicitly true.
+  description = "Master kill switch. Must be explicitly set true for a deliberate, bounded test/live window."
+  type        = bool
+  default     = false
+}
+
+variable "telegram_alerts_enabled_after_epoch" {
+  # Left empty by default -- the handler treats an unparsable/empty value
+  # as +infinity, which means every event looks "older than the cutoff"
+  # and is refused. Set to the actual current epoch time only at the
+  # moment of a deliberate, authorized test/live window, so any event
+  # already in SNS's retry queue from before that moment is rejected.
+  description = "Unix epoch seconds. Events with an earlier StateChangeTime are refused. Empty = block everything."
   type        = string
   default     = ""
 }
@@ -83,6 +105,16 @@ resource "aws_lambda_function" "telegram_alerts" {
   runtime       = "python3.12"
   timeout       = 10
 
+  # Tied directly to the same kill switch as the code-level gate
+  # (should_send() in handler.py), on purpose -- an earlier code-only
+  # deploy (this repo's own history) silently reset a manually-set
+  # `aws lambda put-function-concurrency ... 0` back to unreserved,
+  # because nothing in this resource's config was managing that
+  # attribute. Making it Terraform-managed and variable-driven means
+  # every apply reasserts the intended state instead of silently
+  # dropping an out-of-band setting. -1 = unreserved/no limit.
+  reserved_concurrent_executions = var.telegram_alerts_enabled ? -1 : 0
+
   filename         = data.archive_file.telegram_lambda.output_path
   source_code_hash = data.archive_file.telegram_lambda.output_base64sha256
 
@@ -90,6 +122,8 @@ resource "aws_lambda_function" "telegram_alerts" {
     variables = {
       TELEGRAM_BOT_TOKEN_SECRET_ARN = aws_secretsmanager_secret.telegram_bot_token.arn
       TELEGRAM_CHAT_ID              = var.telegram_chat_id
+      ALERTS_ENABLED                = tostring(var.telegram_alerts_enabled)
+      ALERTS_ENABLED_AFTER_EPOCH    = var.telegram_alerts_enabled_after_epoch
     }
   }
 
