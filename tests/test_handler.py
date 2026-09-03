@@ -31,7 +31,7 @@ VALID_MESSAGE = {
     "AlarmName": "agentic-devops-dev-high-5xx",
     "NewStateValue": "ALARM",
 }
-# The SNS envelope's own delivery timestamp -- what should_send() actually
+# The SNS envelope's own publish timestamp -- what should_send() actually
 # gates on, not anything inside the alarm body (which a retried/replayed
 # delivery would still carry unchanged from the original event).
 VALID_SNS_TIMESTAMP = "2026-09-03T07:00:00.000Z"

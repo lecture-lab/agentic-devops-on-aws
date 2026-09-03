@@ -17,10 +17,19 @@ after a hold is not safe on its own -- a stale, already-queued event can
 still arrive and fire. should_send() is a pure decision function (no
 I/O, directly unit-testable) gated on: a known alarm, an allowed state
 value, ALERTS_ENABLED explicitly true, and the *SNS envelope's own
-delivery Timestamp* (not the alarm body's self-reported StateChangeTime,
+publish timestamp* (not the alarm body's self-reported StateChangeTime,
 which a replayed/retried delivery would still carry unchanged) being
 newer than an explicit activation cutoff. Any one of these failing means
 no secret fetch and no send.
+
+Accepted, documented (not fixed): SNS-to-Lambda delivery is at-least-once
+(AWS's own guarantee), and this handler does no deduplication by SNS
+MessageId. A given alarm state change can plausibly cause more than one
+Telegram message. For this course's scope -- a single bounded alerting
+demo, not a paging system with on-call fatigue stakes -- an occasional
+duplicate message is a cosmetic annoyance, not a safety issue, so
+idempotency logic (a dedup table, a TTL cache) isn't built here. Revisit
+if this pattern is ever reused somewhere duplicate delivery would matter.
 """
 import datetime
 import json
@@ -67,7 +76,7 @@ def _parse_epoch(iso_ts: str) -> float:
 def should_send(message: dict, sns_timestamp: str) -> tuple[bool, str]:
     """Pure decision: no AWS/network calls, so this is directly testable.
 
-    `sns_timestamp` is the SNS envelope's own delivery Timestamp
+    `sns_timestamp` is the SNS envelope's own publish timestamp
     (record["Sns"]["Timestamp"]) -- not anything inside the alarm body,
     which a retried/replayed delivery would still carry unchanged from
     the original event.

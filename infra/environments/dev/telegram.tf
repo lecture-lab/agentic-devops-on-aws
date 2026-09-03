@@ -43,7 +43,7 @@ variable "telegram_alerts_enabled_after_epoch" {
   # and is refused. Set to the actual current epoch time only at the
   # moment of a deliberate, authorized test/live window, so any event
   # already in SNS's retry queue from before that moment is rejected.
-  description = "Unix epoch seconds. Events with an earlier StateChangeTime are refused. Empty = block everything."
+  description = "Unix epoch seconds. Events whose SNS publish timestamp is earlier are refused. Empty = block everything."
   type        = string
   default     = ""
 }
