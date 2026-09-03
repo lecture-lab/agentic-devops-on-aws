@@ -8,6 +8,9 @@ terraform {
     random = {
       source = "hashicorp/random"
     }
+    archive = {
+      source = "hashicorp/archive"
+    }
   }
 }
 

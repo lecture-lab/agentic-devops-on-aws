@@ -9,6 +9,7 @@ crash.*.log
 .terraform.lock.hcl
 *.destroyplan
 .cleanup.destroyplan
+.build/
 
 # Secrets / local env
 .env
