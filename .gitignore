@@ -6,13 +6,13 @@ crash.log
 crash.*.log
 *.tfvars
 !*.tfvars.example
-.terraform.lock.hcl
 *.destroyplan
 .cleanup.destroyplan
 .build/
 
-# Secrets / local env
-.env
+# Secrets / local env -- .env.example is the one exception, tracked on purpose
+.env.*
+!.env.example
 *.pem
 *.key
 

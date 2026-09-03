@@ -5,11 +5,23 @@
 # today with terraform show -json on an RDS password -- sensitive values
 # come back in plaintext in the JSON plan/state, only the CLI's human
 # output masks them). This resource only creates the named container;
-# the value is set once, out-of-band, via:
-#   aws secretsmanager put-secret-value --secret-id <this secret's name> --secret-string '<token>'
+# the value is set once, out-of-band, via ../../../scripts/provision-telegram-token.sh
+# (reads the token on stdin -- never as a CLI argument. A literal
+# `--secret-string '<token>'` on the command line puts the value in
+# process args, visible via `ps` to anything sharing this host's UID --
+# confirmed, not hypothetical: a review caught it in our own first
+# attempt.)
 
 variable "telegram_chat_id" {
-  description = "Telegram chat id the bot posts alerts to. Not sensitive by itself (useless without the bot token), but still kept out of the committed repo -- set via terraform.tfvars (gitignored)."
+  # reviewer F6 classification, recorded explicitly rather than left implicit:
+  # a chat id is an addressing detail, not a credential -- it grants no
+  # access on its own and is useless without the bot token, which is the
+  # one thing this design keeps out of Terraform entirely. Accepted risk:
+  # it does enter this resource's Terraform state and the Lambda's plain
+  # (non-encrypted-at-rest-by-Terraform) environment variables. Kept out
+  # of the committed repo anyway, on general principle -- set via
+  # terraform.tfvars (gitignored), not hardcoded here.
+  description = "Telegram chat id the bot posts alerts to."
   type        = string
   default     = ""
 }
