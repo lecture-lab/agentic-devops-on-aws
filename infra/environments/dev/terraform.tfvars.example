@@ -1,0 +1,3 @@
+# Copy this file to terraform.tfvars and adjust if needed.
+# aws_region  = "ap-northeast-2"
+# environment = "dev"
