@@ -1,0 +1,42 @@
+# EX-1 함정 버전 -- 새 AZ를 리스트 "중간"에 삽입.
+# 09-10 실AWS로 라이브 검증 완료(README.md 참고): 실제로 이 변경을 적용하면
+# `terraform plan` = "6 to add, 0 to change, 3 to destroy":
+#   aws_subnet.public[1]                     must be replaced  (AZ c -> b, ForceNew)
+#   aws_subnet.private[1]                    must be replaced  (AZ c -> b, ForceNew)
+#   aws_route_table_association.public[1]    must be replaced  (연쇄 -- subnet_id 변경)
+#   aws_subnet.public[2] / private[2] / route_table_association.public[2]  will be created
+
+locals {
+  azs = ["${var.aws_region}a", "${var.aws_region}b", "${var.aws_region}c"]
+}
+
+resource "aws_subnet" "public" {
+  count                   = 3
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
+  availability_zone       = local.azs[count.index]
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "agentic-devops-dev-public-${count.index}"
+    Tier = "public"
+  }
+}
+
+resource "aws_subnet" "private" {
+  count             = 3
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 100)
+  availability_zone = local.azs[count.index]
+
+  tags = {
+    Name = "agentic-devops-dev-private-${count.index}"
+    Tier = "private"
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  count          = 3
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}

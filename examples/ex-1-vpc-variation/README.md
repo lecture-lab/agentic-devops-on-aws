@@ -39,6 +39,7 @@ Plan: 6 to add, 0 to change, 3 to destroy.
 
 가설 그대로 확인됨. Route table association까지 연쇄로 replace되는 건 미리 예상 못 했던 디테일 — 학생 성공기준에 "association도 왜 같이 replace되는지"까지 설명하게 하면 더 좋다. 검증 직후 base 리소스는 destroy, `main.tf`는 원본으로 원복(현재 이 저장소의 `infra/environments/dev/main.tf`는 손 안 댄 원본 상태).
 
-## 다음 단계
+## 완료 (2026-09-11)
 
-정상/함정 두 버전을 학생이 스스로 만들어보게 할 참고 정답 파일(`normal.tf.snippet`, `trap.tf.snippet`)과 채점 체크리스트는 아직 안 만듦.
+- `normal.tf.snippet` / `trap.tf.snippet` — 둘 다 `terraform validate` 통과 확인(course-repo dev 환경에 임시로 넣고 검증 후 이 파일들로 분리, main.tf는 원본 그대로 원복).
+- `grading-checklist.md` — 실측값(위 라이브 검증 결과) 기준. "destroy 개수만 맞으면 통과"가 아니라 "어떤 리소스가 destroy되는지"까지 보게 설계 — receipt-discipline 원칙(개수만 보는 체크는 false-green 위험) 적용.
