@@ -38,6 +38,10 @@ plan 파일은 그대로 두고, 실제 인프라 쪽에서 뭔가 바뀐 상황
 # 기대: Unreviewed Diff FAIL
 ```
 
+## 더 깊이 (선택)
+
+이 게이트 같은 "거부하는 스크립트"를 직접 설계할 때 더 조심할 것들 — `../ex-4-verification-trap-cards/CASE-STUDY-02-THE-SAFETY-HOLD-THAT-REPORTED-SUCCESS-20260925.md`. 거부가 exit code·stdout·stderr 중 한 채널에서라도 "성공"처럼 보이면 안 된다는 실제 실패 사례와, mutant 5개로 자기 게이트를 테스트하는 방법.
+
 ## 다 끝나면
 
 학생 자신의 말로 정리해보게 한다: "이 게이트는 어떤 몰래-변경을 잡고, 어떤 건 못 잡는가?" — 정답 방향: 파일 변조·인프라 drift는 잡지만, "애초에 승인 자체가 틀린 판단이었다"는 못 잡는다(그건 Section 4의 Human Approval Boundary 원칙이 다루는 문제).
