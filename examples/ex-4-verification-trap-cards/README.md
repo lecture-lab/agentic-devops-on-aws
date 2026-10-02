@@ -32,7 +32,7 @@ CARD-004와 CARD-009는 원본 그대로 여기 있으면서, **동시에** 본 
 
 `CASE-STUDY-01-THE-SECRET-SCANNER-THAT-COULD-NOT-SEE-AWS-KEYS-20260925.md`(영문) — 위 카드들과 별개로, 한 기여자가 내부 secret-scan 도구가 `AWS_SECRET_ACCESS_KEY=` 형태의 실제 AWS 환경변수명은 못 잡던 결함(2026-09-23 실측)을 정식 사례연구 형식으로 정리한 것. 이 강좌의 도메인(AWS)에 정확히 걸리는 실화이고, 끝에 학생용 실습(자기 스캐너를 세 줄 파일로 재보기)이 이미 포함돼 있다. 카드와 형식은 다르지만(카드=7칸 구조, 이건 산문형 케이스스터디) 같은 목적(false-green 재현·처방·한계 명시)이라 이 실습 안에 같이 둔다. 대본 삽입은 하지 않음(Section 2의 denylist/allowlist beat와 주제가 인접해 과밀해지는 것을 피함) — 원하는 학생은 이 실습에서 추가로 읽는다.
 
-`CASE-STUDY-02-THE-SAFETY-HOLD-THAT-REPORTED-SUCCESS-20260925.md`(영문) — 거부하면서 `exit 0`을 내던 HOLD 가드가 9시간 방치된 실화(2026-09-23). **EX-2(Fingerprint Verification Gate)와 직접 관련** — "게이트가 거부할 때 exit code·stdout·stderr 세 채널 전부에서 시끄럽게 실패해야 한다"·"가드는 위험한 줄 바로 앞이 아니라 파일 첫 줄에 있어야 한다"는 원칙이 EX-2가 실제로 만드는 것과 같은 종류의 게이트에 적용된다. Mutant 5개로 자기 검사를 테스트하는 방법론까지 포함. EX-2 README에도 교차링크를 달아둔다.
+`CASE-STUDY-02-THE-SAFETY-HOLD-THAT-REPORTED-SUCCESS-20260925.md`(영문) — 거부하면서 `exit 0`을 내던 HOLD 가드가 9시간 방치된 실화(2026-09-23). "게이트가 거부할 때 exit code·stdout·stderr 세 채널 전부에서 시끄럽게 실패해야 한다"·"가드는 위험한 줄 바로 앞이 아니라 파일 첫 줄에 있어야 한다"는 원칙을 다룬다 — 이 강좌의 Safe Deployment 승인 게이트처럼 거부가 성공으로 보이면 안 되는 모든 게이트에 적용된다. Mutant 5개로 자기 검사를 테스트하는 방법론까지 포함.
 
 `CASE-STUDY-03-THE-TEST-THAT-DESTROYED-THE-EVIDENCE-20260928.md`(영문) — CASE-STUDY-02와 짝(본문에서 서로 가리킴). HOLD 중인 데이터를 지키는 역할을 맡은 바로 그 손이, 확인하려다 네 번 건드리고 그중 하나(SQLite 연결을 열고 닫는 것 자체가 쓰기라 `-shm`/`-wal` 사이드카 파일 소실)로 증거를 실제로 파괴한 실화(2026-09-23). 핵심 교훈: "held 상태의 데이터는 나에게 read-only가 아니라 **나를 위한 게 아니다**" — 확인·백업·스캔도 전부 손댐으로 친다. 이번 주 우리 자신의 제작과정에서도 같은 원칙이 실제로 지켜졌다(producer가 터미널 화면목록을 조사하며 `terraform.tfstate`·`.tfvars`를 "계정정보가 있을 수 있어서" 열어보지 않은 것 — 이 사례의 교훈 그대로). 대본 삽입은 안 함(하나의 beat에 정확히 대응하지 않음) — 이 실습에서 읽는다.
 
