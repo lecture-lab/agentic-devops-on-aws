@@ -47,12 +47,13 @@ and run them yourself.
 ## One-time setup for contributors
 
 ```
-git config core.hooksPath .githooks
+bash scripts/bootstrap.sh
 ```
 
-This activates the secret-scan pre-commit hook (`scripts/secret-scan.py
---staged`). `.git/hooks/` itself isn't versioned, so this one command is
-needed once per clone -- there's no CI running it automatically yet.
+This runs `git config core.hooksPath .githooks` and the scanner's self-test,
+which activates the secret-scan pre-commit hook (`scripts/secret-scan.py
+--staged`). Git config isn't copied by `git clone`, so this is needed once per
+clone -- there's no CI running it automatically yet.
 
 **Known gap, not yet resolved:** an earlier draft of the secret scanner
 briefly committed a fixture file containing secret-*shaped* (fake, not
