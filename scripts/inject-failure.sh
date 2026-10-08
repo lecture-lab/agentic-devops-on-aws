@@ -16,6 +16,7 @@
 #   ./scripts/inject-failure.sh            # 5 requests, 10 s apart
 #   ./scripts/inject-failure.sh 3 5        # 3 requests, 5 s apart
 #   ALB_URL=http://<alb-dns-name> ./scripts/inject-failure.sh
+# SHOW_URL=1 prints the load balancer address in the output.
 # TF_BIN selects the CLI used to read the ALB name (default: terraform;
 # set TF_BIN=tofu if you use OpenTofu).
 set -euo pipefail
@@ -35,7 +36,10 @@ if [[ -z "${ALB_URL:-}" ]]; then
   ALB_URL="http://${ALB_DNS}"
 fi
 
-echo "inject-failure.sh: calling ${ALB_URL}/error ${COUNT} time(s), ${INTERVAL}s apart."
+# Show the load balancer address only on request (it is a live public
+# endpoint; keep it out of recordings and screenshots by default).
+if [[ "${SHOW_URL:-0}" == "1" ]]; then SHOWN="${ALB_URL}/error"; else SHOWN="the app's /error URL"; fi
+echo "inject-failure.sh: calling ${SHOWN} ${COUNT} time(s), ${INTERVAL}s apart."
 echo "It only requests that one URL. Nothing else is changed."
 
 five_xx=0
@@ -52,7 +56,7 @@ for ((i = 1; i <= COUNT; i++)); do
 done
 
 if (( five_xx == 0 )); then
-  echo "No 5xx was returned, so the alarm will not fire. Check ${ALB_URL}/health first." >&2
+  echo "No 5xx was returned, so the alarm will not fire. Check the app's /health URL first (run with SHOW_URL=1 to print the address)." >&2
   exit 3
 fi
 echo "Done: ${five_xx} request(s) returned 5xx. Stop here -- the alarm returns to OK on its own once the errors stop."
