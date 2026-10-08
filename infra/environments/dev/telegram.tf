@@ -7,13 +7,13 @@
 # output masks them). This resource only creates the named container;
 # the value is set once, out-of-band, through the AWS Console on a
 # trusted device -- not from this shared host. We tried a stdin-piped
-# CLI script instead and a review caught that it still wrote the
+# CLI script instead and the security review caught that it still wrote the
 # value to a temp file on a UID shared with every other user, which
 # mode 0600 does not actually isolate; there is no CLI/script path from
 # this host that's been reviewed as safe, so there isn't one here.
 
 variable "telegram_chat_id" {
-  # reviewer F6 classification, recorded explicitly rather than left implicit:
+  # Review finding F6 classification, recorded explicitly rather than left implicit:
   # a chat id is an addressing detail, not a credential -- it grants no
   # access on its own and is useless without the bot token, which is the
   # one thing this design keeps out of Terraform entirely. Accepted risk:
@@ -27,7 +27,7 @@ variable "telegram_chat_id" {
 }
 
 variable "telegram_alerts_enabled" {
-  # reviewer A3: SNS retries failed/throttled Lambda deliveries for a long
+  # Review finding A3: SNS retries failed/throttled Lambda deliveries for a long
   # time (days, per AWS docs on SNS delivery retries), so un-throttling
   # this function is not by itself safe -- stale queued events could
   # still fire. Default false: the handler's should_send() refuses to

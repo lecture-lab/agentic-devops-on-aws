@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Tracked pre-commit hook (reviewer F5). .git/hooks/ isn't versioned, so this
+# Tracked pre-commit hook (review finding F5). .git/hooks/ isn't versioned, so this
 # lives here instead -- run once per clone:
 #   git config core.hooksPath .githooks
 set -euo pipefail

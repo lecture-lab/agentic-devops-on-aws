@@ -6,11 +6,11 @@ argument -- provisioning is a manual AWS Console step, see telegram.tf).
 The secret ARN itself is passed in as an env var -- that's a name, not a
 value.
 
-Data minimization (reviewer F4): the outbound message is built from a
+Data minimization (review finding F4): the outbound message is built from a
 fixed, known-safe allowlist, not a passthrough of whatever CloudWatch
 put in the SNS message. Raw NewStateReason text is never forwarded.
 
-Fail-closed gating (reviewer A3, refined in the F2-F6 recheck): SNS
+Fail-closed gating (review finding A3, refined in the F2-F6 recheck): SNS
 retries failed/throttled Lambda deliveries for a long time (AWS: many
 attempts over roughly three weeks). Simply un-throttling this function
 after a hold is not safe on its own -- a stale, already-queued event can

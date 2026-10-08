@@ -1,4 +1,4 @@
-"""Focused tests for reviewer A3/A4 -- fail-closed gating and exception
+"""Focused tests for review findings A3/A4 -- fail-closed gating and exception
 redaction. No AWS credentials or network access required: these tests
 monkeypatch the secret-fetch and HTTP-send calls to raise if they're ever
 reached, so a bug that would fetch a real secret or call real Telegram

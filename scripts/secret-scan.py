@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Secret scanner for this repo (reviewer F5).
+"""Secret scanner for this repo (review finding F5).
 
 A zero-hit result is not proof of absence -- so this script also carries
 a self-test that proves the patterns actually fire. The self-test builds

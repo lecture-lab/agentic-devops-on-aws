@@ -12,7 +12,7 @@ crash.*.log
 
 # Secrets / local env -- .env.example is the one exception, tracked on purpose.
 # Both patterns are needed: `.env.*` does NOT match the bare `.env` filename
-# (found by review after the first pass here dropped `.env`).
+# (found by the security review after the first pass here dropped `.env`).
 .env
 .env.*
 !.env.example

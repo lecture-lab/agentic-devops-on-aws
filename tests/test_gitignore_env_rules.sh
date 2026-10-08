@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Focused test for reviewer A2: proves .env and .env.local are ignored,
+# Focused test for review finding A2: proves .env and .env.local are ignored,
 # and .env.example is NOT ignored (i.e. actually tracked). A prose claim
 # isn't evidence -- this is.
 set -euo pipefail
