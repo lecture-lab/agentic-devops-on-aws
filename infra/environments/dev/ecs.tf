@@ -1,7 +1,7 @@
 # Container compute layer: ECS cluster + Fargate service running a
-# public sample image for a pipeline smoke test (not the course
-# application). Registered with the ALB target group; logs to
-# CloudWatch Logs.
+# public nginx image with the course's app/web/nginx.conf written in at
+# start-up (inject_nginx_conf). Registered with the ALB target group;
+# logs to CloudWatch Logs.
 
 resource "aws_ecs_cluster" "main" {
   name = "agentic-devops-dev-cluster"

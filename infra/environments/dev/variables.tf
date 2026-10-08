@@ -25,9 +25,9 @@ variable "container_port" {
 }
 
 variable "container_image" {
-  description = "Public container image for the pipeline smoke test (not the course application)."
+  description = "Container image. Public nginx by default (minor tag pinned); the course nginx.conf is written in at start-up when inject_nginx_conf is true."
   type        = string
-  default     = "public.ecr.aws/nginx/nginx:latest"
+  default     = "public.ecr.aws/nginx/nginx:1.30"
 }
 
 variable "inject_nginx_conf" {
