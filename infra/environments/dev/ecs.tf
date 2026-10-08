@@ -55,25 +55,43 @@ resource "aws_ecs_task_definition" "app" {
   execution_role_arn       = aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([
-    {
-      name      = "app"
-      image     = var.container_image
-      essential = true
-      portMappings = [
-        {
-          containerPort = var.container_port
-          protocol      = "tcp"
+    merge(
+      {
+        name      = "app"
+        image     = var.container_image
+        essential = true
+        portMappings = [
+          {
+            containerPort = var.container_port
+            protocol      = "tcp"
+          }
+        ]
+        logConfiguration = {
+          logDriver = "awslogs"
+          options = {
+            "awslogs-group"         = aws_cloudwatch_log_group.app.name
+            "awslogs-region"        = var.aws_region
+            "awslogs-stream-prefix" = "app"
+          }
         }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.app.name
-          "awslogs-region"        = var.aws_region
-          "awslogs-stream-prefix" = "app"
-        }
+      },
+      # Learner shortcut: run the public nginx image with the course's
+      # app/web/nginx.conf written in at start-up, so there is no image
+      # build or ECR repository to set up. app/web/nginx.conf stays the
+      # single source of truth (it serves "/" and "/health" with 200 and
+      # the deliberate "/error" route with 500 for the Section 6-7 labs).
+      {
+        for k, v in {
+          command = [
+            "sh", "-c",
+            "printf '%s' \"$NGINX_CONF\" > /etc/nginx/conf.d/default.conf && exec nginx -g 'daemon off;'"
+          ]
+          environment = [
+            { name = "NGINX_CONF", value = file("${path.module}/../../../app/web/nginx.conf") }
+          ]
+        } : k => v if var.inject_nginx_conf
       }
-    }
+    )
   ])
 
   tags = {

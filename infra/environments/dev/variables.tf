@@ -30,6 +30,12 @@ variable "container_image" {
   default     = "public.ecr.aws/nginx/nginx:latest"
 }
 
+variable "inject_nginx_conf" {
+  description = "Write app/web/nginx.conf into the container at start-up (public nginx image + course config, no image build or ECR needed). Set false only if container_image already contains the course nginx.conf."
+  type        = bool
+  default     = true
+}
+
 variable "desired_count" {
   description = "Desired ECS Fargate task count for the app service."
   type        = number
