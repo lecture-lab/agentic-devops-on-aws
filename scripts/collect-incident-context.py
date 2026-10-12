@@ -265,7 +265,7 @@ def collect_resource_state(aws, cluster, service, at, warnings):
 
 # ---------- 가리기 ----------
 ACCOUNT_RE = re.compile(r"(?<!\d)\d{12}(?!\d)")
-SECRET_RES = [re.compile(p) for p in (r"AKIA[0-9A-Z]{16}", r"(?i)bearer\s+[A-Za-z0-9._\-]{20,}", r"sk-[A-Za-z0-9]{20,}",
+SECRET_RES = [re.compile(p) for p in (r"(?:AKIA|ASIA)[0-9A-Z]{16}", r"(?i)bearer\s+[A-Za-z0-9._\-]{20,}", r"sk-[A-Za-z0-9]{20,}",
                                        r"gh[pousr]_[A-Za-z0-9]{30,}", r"github_pat_[A-Za-z0-9_]{22,}", r"xox[baprs]-[0-9A-Za-z\-]{10,}")]
 
 

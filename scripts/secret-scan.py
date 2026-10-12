@@ -45,7 +45,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 PATTERNS = {
-    "aws_access_key": re.compile(r"AKIA[0-9A-Z]{16}"),
+    "aws_access_key": re.compile(r"(?:AKIA|ASIA)[0-9A-Z]{16}"),   # ASIA = 임시(STS) 키 ID, CloudTrail 출력에 나옴
     "telegram_bot_token": re.compile(r"\d{6,}:[A-Za-z0-9_-]{30,}"),
     "github_token": re.compile(r"gh[pousr]_[A-Za-z0-9]{30,}"),
     "private_key": re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),

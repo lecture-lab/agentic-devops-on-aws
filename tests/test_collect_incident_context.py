@@ -88,6 +88,14 @@ class T(unittest.TestCase):
         self.assertTrue(any(ch["type"] == "deployment" for ch in c["recent_changes"]))
         self.assertNotIn("root_cause", json.dumps(c).lower())  # 원인 판단 필드 없음
 
+    def test_temp_key_id_shape_is_scrubbed(self):
+        # CloudTrail 출력에는 임시 키 ID(ASIA...)가 나온다 — AKIA 와 같이 항상 가려져야 한다
+        temp_key = "ASIA" + "ABCDEFGHIJKLMNOP"
+        counter = {"account_ids": 0, "secret_shapes": 0}
+        out = cic.scrub({"userIdentity": {"accessKeyId": temp_key}}, True, counter)
+        self.assertNotIn(temp_key, json.dumps(out))
+        self.assertGreater(counter["secret_shapes"], 0)
+
     def test_masking_default_and_no_mask(self):
         p, c = self.r()
         s = json.dumps(c)
