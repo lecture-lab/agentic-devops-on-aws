@@ -65,7 +65,7 @@ data "archive_file" "telegram_lambda" {
 }
 
 resource "aws_iam_role" "telegram_lambda" {
-  name = "agentic-devops-dev-telegram-lambda"
+  name = "agentic-devops-dev-telegram-lambda${var.iam_name_suffix}"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

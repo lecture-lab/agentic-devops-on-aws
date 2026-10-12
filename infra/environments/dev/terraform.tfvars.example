@@ -1,3 +1,4 @@
 # Copy this file to terraform.tfvars and adjust if needed.
 # aws_region  = "us-east-1"
 # environment = "dev"
+# iam_name_suffix = ""   # leave empty; only if the default IAM role name already exists in this account

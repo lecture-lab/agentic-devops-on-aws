@@ -10,6 +10,12 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "iam_name_suffix" {
+  description = "Optional suffix for the global IAM role name. Leave empty. Set it (for example \"-b\") only when another stack in the same account already uses the default role name."
+  type        = string
+  default     = ""
+}
+
 variable "vpc_cidr" {
   description = "CIDR block for the training VPC."
   type        = string
