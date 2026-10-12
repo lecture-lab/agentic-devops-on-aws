@@ -31,7 +31,7 @@ For Terraform changes:
 
 Default region:
 
-ap-northeast-2
+us-east-1
 
 ## Tags
 

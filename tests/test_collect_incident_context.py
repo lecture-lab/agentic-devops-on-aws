@@ -39,12 +39,12 @@ def write_fixtures(d, drop=(), logs=None, td_env=None):
                {"timestamp": ms("2026-10-08T10:58:40Z"), "message": 'debug token %s account %s' % (FAKE_KEY, ACCT)}])},
         "ecs.describe-services.service": {"services": [{
             "serviceName": "agentic-devops-dev-app-service", "status": "ACTIVE", "desiredCount": 2, "runningCount": 2, "pendingCount": 0,
-            "taskDefinition": "arn:aws:ecs:ap-northeast-2:%s:task-definition/agentic-devops-dev-app:7" % ACCT,
+            "taskDefinition": "arn:aws:ecs:us-east-1:%s:task-definition/agentic-devops-dev-app:7" % ACCT,
             "deployments": [{"id": "ecs-svc/1", "status": "PRIMARY", "rolloutState": "COMPLETED", "desiredCount": 2, "runningCount": 2,
-                             "taskDefinition": "arn:aws:ecs:ap-northeast-2:%s:task-definition/agentic-devops-dev-app:7" % ACCT,
+                             "taskDefinition": "arn:aws:ecs:us-east-1:%s:task-definition/agentic-devops-dev-app:7" % ACCT,
                              "createdAt": "2026-10-08T10:54:00+00:00", "updatedAt": "2026-10-08T10:56:00+00:00"}],
             "events": [{"createdAt": "2026-10-08T10:56:00+00:00", "message": "(service agentic-devops-dev-app-service) has reached a steady state."}],
-            "loadBalancers": [{"targetGroupArn": "arn:aws:elasticloadbalancing:ap-northeast-2:%s:targetgroup/agentic-devops-dev-app-tg/def456" % ACCT}]}], "failures": []},
+            "loadBalancers": [{"targetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:%s:targetgroup/agentic-devops-dev-app-tg/def456" % ACCT}]}], "failures": []},
         "ecs.describe-task-definition.taskdef": {"taskDefinition": {"family": "agentic-devops-dev-app", "revision": 7, "registeredAt": "2026-10-08T10:53:30+00:00",
             "containerDefinitions": [{"name": "app", "image": "public.ecr.aws/nginx/nginx:1.30", "command": ["sh", "-c", "x"],
                                       "environment": td_env or [{"name": "NGINX_CONF", "value": "server {}"}, {"name": "DB_PASSWORD", "value": "hunter2-not-a-real-password"}]}]}},
@@ -106,7 +106,7 @@ class T(unittest.TestCase):
         self.assertTrue(c["resource_state"]["task_definition"]["command_overridden"])
 
     def test_read_only_allowlist(self):
-        aws = cic.Aws("ap-northeast-2")
+        aws = cic.Aws("us-east-1")
         for svc, verb in (("ecs", "update-service"), ("ecs", "run-task"), ("cloudwatch", "put-metric-alarm"), ("logs", "delete-log-group"),
                           ("secretsmanager", "get-secret-value"), ("lambda", "get-function-configuration")):
             with self.assertRaises(cic.CollectError, msg=(svc, verb)):

@@ -1,7 +1,7 @@
 variable "aws_region" {
   description = "AWS region used for the training environment."
   type        = string
-  default     = "ap-northeast-2"
+  default     = "us-east-1"
 }
 
 variable "environment" {
@@ -63,7 +63,7 @@ variable "db_instance_class" {
 }
 
 variable "db_engine_version" {
-  description = "PostgreSQL engine version. Confirmed orderable for db.t4g.micro/db.t3.micro in ap-northeast-2 at plan time."
+  description = "PostgreSQL engine version. Checked orderable for db.t4g.micro/db.t3.micro in ap-northeast-2 only; confirm it is orderable in the target Region (default us-east-1) before apply."
   type        = string
   default     = "16.15"
 }

@@ -17,8 +17,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "notifications" 
 
 
 def _reload_handler(*, enabled: str, after_epoch: str = ""):
-    os.environ.setdefault("AWS_DEFAULT_REGION", "ap-northeast-2")
-    os.environ["TELEGRAM_BOT_TOKEN_SECRET_ARN"] = "arn:aws:secretsmanager:ap-northeast-2:000000000000:secret:test"
+    os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
+    os.environ["TELEGRAM_BOT_TOKEN_SECRET_ARN"] = "arn:aws:secretsmanager:us-east-1:000000000000:secret:test"
     os.environ["TELEGRAM_CHAT_ID"] = "0"
     os.environ["ALERTS_ENABLED"] = enabled
     os.environ["ALERTS_ENABLED_AFTER_EPOCH"] = after_epoch
