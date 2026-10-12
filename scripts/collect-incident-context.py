@@ -266,7 +266,11 @@ def collect_resource_state(aws, cluster, service, at, warnings):
 # ---------- 가리기 ----------
 ACCOUNT_RE = re.compile(r"(?<!\d)\d{12}(?!\d)")
 SECRET_RES = [re.compile(p) for p in (r"(?:AKIA|ASIA)[0-9A-Z]{16}", r"(?i)bearer\s+[A-Za-z0-9._\-]{20,}", r"sk-[A-Za-z0-9]{20,}",
-                                       r"gh[pousr]_[A-Za-z0-9]{30,}", r"github_pat_[A-Za-z0-9_]{22,}", r"xox[baprs]-[0-9A-Za-z\-]{10,}")]
+                                       r"gh[pousr]_[A-Za-z0-9]{30,}", r"github_pat_[A-Za-z0-9_]{22,}", r"xox[baprs]-[0-9A-Za-z\-]{10,}",
+                                       # 비밀 액세스 키(40자)는 이름이 앞에 붙을 때만 가린다 — 맨 40자를 다 가리면 git 해시 같은 정상 값까지 가려진다.
+                                       r"(?i)(?:aws_secret_access_key|secret_access_key|secretaccesskey)[\"'\s:=]+[A-Za-z0-9/+=]{40}",
+                                       r"(?i)(?:aws_session_token|session_token|sessiontoken|x-amz-security-token)[\"'\s:=]+[A-Za-z0-9/+=]{40,}",
+                                       r"(?:IQoJb3JpZ2lu|FwoGZXIvYXdz)[A-Za-z0-9/+=]{40,}")]
 
 
 def scrub(obj, mask_account, counter):

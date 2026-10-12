@@ -96,6 +96,18 @@ class T(unittest.TestCase):
         self.assertNotIn(temp_key, json.dumps(out))
         self.assertGreater(counter["secret_shapes"], 0)
 
+    def test_secret_key_and_session_token_scrubbed_but_git_hash_kept(self):
+        # 이름이 붙은 비밀 액세스 키(40자)·STS 세션 토큰은 가리고, 이름 없는 40자(git 해시)는 그대로 둔다
+        secret = "A" * 20 + "b" * 20                       # 합성 40자(실제 키 아님)
+        sts = "IQoJb3JpZ2lu" + "C" * 50                       # 합성 세션 토큰 모양
+        git_hash = "0123456789abcdef0123456789abcdef01234567"  # 40자 git 해시
+        counter = {"account_ids": 0, "secret_shapes": 0}
+        out = json.dumps(cic.scrub({"a": '"SecretAccessKey": "%s"' % secret, "b": sts,
+                                    "c": "aws_session_token=%s" % ("D" * 44), "d": "commit " + git_hash}, True, counter))
+        self.assertNotIn(secret, out); self.assertNotIn(sts, out); self.assertNotIn("D" * 44, out)
+        self.assertIn(git_hash, out)
+        self.assertGreaterEqual(counter["secret_shapes"], 3)
+
     def test_masking_default_and_no_mask(self):
         p, c = self.r()
         s = json.dumps(c)
