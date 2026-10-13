@@ -55,11 +55,12 @@ def write_fixtures(d, drop=(), logs=None, td_env=None):
             continue
         j(os.path.join(d, name + ".json"), obj)
 
-def run(extra=(), drop=(), logs=None, td_env=None, now=NOW):
+def run(extra=(), drop=(), logs=None, td_env=None, now=NOW, env=None):
     d = tempfile.mkdtemp(prefix="cic-fx-")
     write_fixtures(d, drop=drop, logs=logs, td_env=td_env)
     out = os.path.join(d, "out", "incident-context.json")
-    p = subprocess.run([sys.executable, SCRIPT, "--fixture", d, "--out", out, "--now", now] + list(extra), capture_output=True, text=True)
+    e = dict(os.environ); e.update(env or {})
+    p = subprocess.run([sys.executable, SCRIPT, "--fixture", d, "--out", out, "--now", now] + list(extra), capture_output=True, text=True, encoding="utf-8", errors="replace", env=e)
     ctx = None
     if os.path.isfile(out):
         with open(out, encoding="utf-8") as fh:
@@ -72,6 +73,12 @@ class T(unittest.TestCase):
             shutil.rmtree(d, ignore_errors=True)
     def r(self, **kw):
         p, c, d = run(**kw); self.dirs = getattr(self, "dirs", []) + [d]; return p, c
+
+    def test_english_windows_console_does_not_crash(self):
+        # 영문 Windows 콘솔(cp1252)은 한국어 print 를 인코딩하지 못해 죽을 수 있다 — 종료 코드 0 이어야 하고 JSON 은 써져야 한다
+        p, c = self.r(env={"PYTHONIOENCODING": "cp1252"})
+        self.assertEqual(p.returncode, 0, p.stderr)
+        self.assertIsNotNone(c)
 
     def test_happy_path_facts_only(self):
         p, c = self.r()

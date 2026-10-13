@@ -340,6 +340,11 @@ def main(argv=None):
     ap.add_argument("--no-mask", action="store_true", help="계정 ID 가리기를 끔(비밀 모양 문자열은 항상 가림)")
     ap.add_argument("--fixture", default=None, help="시험용: aws 호출 대신 이 폴더의 JSON 을 읽음")
     ap.add_argument("--now", default=None, help="시험용: 현재 시각 고정")
+    for _s in (sys.stdout, sys.stderr):  # 영문 Windows(cp1252) 콘솔에서 한국어 출력이 UnicodeEncodeError 로 죽지 않게
+        try:
+            _s.reconfigure(errors="replace")
+        except Exception:
+            pass
     args = ap.parse_args(argv)
     now = parse_time(args.now) if args.now else dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
     root = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
