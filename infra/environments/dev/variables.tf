@@ -69,7 +69,7 @@ variable "db_instance_class" {
 }
 
 variable "db_engine_version" {
-  description = "PostgreSQL engine version. Checked orderable for db.t4g.micro/db.t3.micro in ap-northeast-2 only; confirm it is orderable in the target Region (default us-east-1) before apply."
+  description = "PostgreSQL engine version. Checked orderable for db.t4g.micro/db.t3.micro (gp3) in ap-northeast-2 and in us-east-1 (read-only check on 2026-10-12/13); availability changes over time, so re-check it in the target Region before apply."
   type        = string
   default     = "16.15"
 }
