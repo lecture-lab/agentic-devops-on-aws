@@ -1,7 +1,7 @@
 variable "aws_region" {
-  description = "AWS region used for the training environment."
+  description = "AWS region used for the training environment. Korean edition: ap-northeast-2 (Seoul, the default). English edition: us-east-1 (N. Virginia) -- set aws_region in terraform.tfvars (see terraform.tfvars.example). The two Availability Zones are derived from this value (<region>a and <region>c)."
   type        = string
-  default     = "us-east-1"
+  default     = "ap-northeast-2"
 }
 
 variable "environment" {

@@ -31,7 +31,11 @@ For Terraform changes:
 
 Default region:
 
-us-east-1
+ap-northeast-2 (Korean edition, Seoul)
+
+English edition: us-east-1 (N. Virginia). Set `aws_region` in
+`infra/environments/dev/terraform.tfvars` and `export AWS_REGION=us-east-1`
+for the helper scripts.
 
 ## Tags
 

@@ -5,23 +5,23 @@
   * AWS 는 읽기 전용만 부른다(describe-/get-/list-/filter-). 수정·삭제·실행 호출 0. 코드에 허용 목록이 있고 시험으로 지킨다.
   * 관측된 사실만 담는다. 원인 판단(root cause)은 하지 않는다 — 그건 분석 단계(Claude Code)의 일이다.
   * 못 모은 증거는 collection_warnings 에 남긴다. 조용한 빈 칸 없음.
-  * 계정 ID 는 기본으로 가린다(--no-mask 로 끔). 비밀 모양 문자열은 --no-mask 여도 항상 가린다.
+  * 계정 ID 와 클라이언트(공인) IP 주소는 기본으로 가린다(--no-mask 로 끔). 비밀 모양 문자열은 --no-mask 여도 항상 가린다.
   * 비밀값·환경변수 전체·Lambda/Secrets 는 건드리지 않는다. task definition 의 environment 는 복사하지 않는다.
 의존성: python3 (표준 라이브러리만) + aws CLI. AWS_PROFILE / 리전 환경변수를 그대로 쓴다.
 
 종료 코드: 0 = 파일 작성(경고는 파일과 stderr 에 있음) · 3 = 모든 증거 수집 실패(파일은 경고만 담아 작성) · 1 = 사용법/내부 오류
 """
-import argparse, datetime as dt, hashlib, json, os, re, subprocess, sys, tempfile
+import argparse, datetime as dt, hashlib, ipaddress, json, os, re, subprocess, sys, tempfile
 
 TOOL = "collect-incident-context"
-TOOL_VERSION = "0.1"
+TOOL_VERSION = "0.2"
 ALLOWED_PREFIXES = ("describe-", "get-", "list-", "filter-")
 ALLOWED_SERVICES = {"cloudwatch", "logs", "ecs", "elbv2"}
 DEFAULT_ALARM = "agentic-devops-dev-high-5xx"
 DEFAULT_CLUSTER = "agentic-devops-dev-cluster"
 DEFAULT_SERVICE = "agentic-devops-dev-app-service"
 DEFAULT_LOG_GROUP = "/ecs/agentic-devops-dev-app"
-DEFAULT_REGION = "us-east-1"
+DEFAULT_REGION = "ap-northeast-2"  # 한국어 판 기본(서울). 영문 판은 AWS_REGION=us-east-1 로 바꾼다.
 MAX_LOG_LINES_5XX = 30
 MAX_LOG_LINES_OTHER = 20
 MAX_LINE_CHARS = 300
@@ -273,6 +273,32 @@ SECRET_RES = [re.compile(p) for p in (r"(?:AKIA|ASIA)[0-9A-Z]{16}", r"(?i)bearer
                                        r"(?:IQoJb3JpZ2lu|FwoGZXIvYXdz)[A-Za-z0-9/+=]{40,}")]
 
 
+# 클라이언트(공인) IP 가리기. 사설·루프백·링크로컬 주소(ALB·VPC 안쪽 주소)는 진단에 필요하므로 남기고,
+# 공인(global) 주소만 «<client-ip-N>» 로 바꾼다. 같은 주소는 같은 번호라서 «한 곳에서 여섯 번» 같은 분석은 유지된다.
+IPV4_RE = re.compile(r"(?<![\d.])(?:25[0-5]|2[0-4]\d|1?\d?\d)(?:\.(?:25[0-5]|2[0-4]\d|1?\d?\d)){3}(?![\d.])")
+IPV6_RE = re.compile(r"(?<![\w:])(?:[0-9A-Fa-f]{0,4}:){2,7}[0-9A-Fa-f]{0,4}(?![\w:])")
+
+
+def _mask_ips(s, counter):
+    ips = counter.setdefault("_ip_index", {})
+
+    def sub(m):
+        try:
+            ip = ipaddress.ip_address(m.group(0))
+        except ValueError:
+            return m.group(0)  # 시각(00:31:09)·버전 번호 같은 것은 IP 가 아님
+        if not ip.is_global:
+            return m.group(0)  # 사설·루프백·링크로컬은 남긴다
+        key = str(ip)
+        if key not in ips:
+            ips[key] = len(ips) + 1
+        counter["client_ip_replacements"] += 1
+        return "<client-ip-%d>" % ips[key]
+
+    s = IPV4_RE.sub(sub, s)
+    return IPV6_RE.sub(sub, s)
+
+
 def scrub(obj, mask_account, counter):
     if isinstance(obj, str):
         s = obj
@@ -282,6 +308,7 @@ def scrub(obj, mask_account, counter):
         if mask_account:
             s, n = ACCOUNT_RE.subn("<account-id>", s)
             counter["account_ids"] += n
+            s = _mask_ips(s, counter)
         return s
     if isinstance(obj, list):
         return [scrub(x, mask_account, counter) for x in obj]
@@ -337,7 +364,7 @@ def main(argv=None):
     ap.add_argument("--profile", default=None, help="지정 안 하면 AWS_PROFILE 환경변수를 aws CLI 가 그대로 사용")
     ap.add_argument("--at", default=None, help="사건 시각(ISO8601). 기본: 알람이 ALARM 이면 그 상태 변경 시각, 아니면 지금")
     ap.add_argument("--out", default=None, help="기본: <repo>/agent/context/incident-context.json")
-    ap.add_argument("--no-mask", action="store_true", help="계정 ID 가리기를 끔(비밀 모양 문자열은 항상 가림)")
+    ap.add_argument("--no-mask", action="store_true", help="계정 ID·클라이언트 IP 가리기를 끔(비밀 모양 문자열은 항상 가림)")
     ap.add_argument("--fixture", default=None, help="시험용: aws 호출 대신 이 폴더의 JSON 을 읽음")
     ap.add_argument("--now", default=None, help="시험용: 현재 시각 고정")
     for _s in (sys.stdout, sys.stderr):  # 영문 Windows(cp1252) 콘솔에서 한국어 출력이 UnicodeEncodeError 로 죽지 않게
@@ -351,13 +378,15 @@ def main(argv=None):
     out_path = args.out or os.path.join(root, "agent", "context", "incident-context.json")
     aws = Aws(args.region, args.profile, args.fixture)
     ctx, warnings = build(args, aws, now)
-    counter = {"account_ids": 0, "secret_shapes": 0}
+    counter = {"account_ids": 0, "secret_shapes": 0, "client_ip_replacements": 0}
     ctx = scrub(ctx, not args.no_mask, counter)
     me = hashlib.sha256(open(os.path.abspath(__file__), "rb").read()).hexdigest()[:16]
     ctx["collection_meta"] = {"tool": TOOL, "version": TOOL_VERSION, "script_sha256_16": me, "read_only": True,
                               "region": args.region, "collected_at": iso(now),
                               "aws_calls": sorted(set(aws.calls)), "masking": {"account_id_masked": not args.no_mask,
-                                                                               "replaced": counter}}
+                                                                               "client_ip_masked": not args.no_mask,
+                                                                               "distinct_client_ips": len(counter.get("_ip_index", {})),
+                                                                               "replaced": {k: v for k, v in counter.items() if not k.startswith("_")}}}
     m = ctx["metrics"]
     got = [ctx["trigger"].get("state") is not None,
            any((m.get(k) or {}).get("summary") for k in ("target_5xx_count", "target_4xx_count", "request_count", "ecs_cpu_average_percent")),
@@ -371,7 +400,8 @@ def main(argv=None):
     os.replace(tmp, out_path)
     n = len(ctx["collection_warnings"])
     print("incident-context.json 작성: %s" % out_path)
-    print("사건 시각 %s · 경고 %d건 · 가린 것: 계정ID %d, 비밀모양 %d" % (ctx["timestamp"], n, counter["account_ids"], counter["secret_shapes"]))
+    print("사건 시각 %s · 경고 %d건 · 가린 것: 계정ID %d, 비밀모양 %d, 클라이언트 IP %d(서로 다른 주소 %d)" % (
+        ctx["timestamp"], n, counter["account_ids"], counter["secret_shapes"], counter["client_ip_replacements"], len(counter.get("_ip_index", {}))))
     if n:
         print("⚠️ 부분 수집 — 아래 증거는 비었거나 못 모았습니다. 분석은 불완전할 수 있습니다:", file=sys.stderr)
         for w in ctx["collection_warnings"]:

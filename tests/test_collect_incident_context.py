@@ -175,5 +175,56 @@ class T(unittest.TestCase):
         self.assertEqual(sum(1 for x in c["logs"] if '" 500 ' in x["message"]), 5)
         self.assertLessEqual(len(c["logs"]), cic.MAX_LOG_LINES_5XX + cic.MAX_LOG_LINES_OTHER)
 
+    # ---- 클라이언트 IP 가리기 (강사 10-16 19:00 결정) -------------------------------------------------
+    PUB4, PUB4B, PUB6, ULA6 = "93.184.216.34", "8.8.4.4", "2606:2800:220:1:248:1893:25c8:1946", "fd00::1"
+    def _ip_logs(self):
+        mk = lambda sec, msg: {"timestamp": ms("2026-10-08T10:59:00Z") + sec, "message": msg}
+        return [
+            mk(1, '10.20.1.5 - - [08/Oct/2026:10:59:01 +0000] "GET /error HTTP/1.1" 500 41 "-" "curl/8.18.0" "%s"' % self.PUB4),
+            mk(2, '10.20.1.5 - - [08/Oct/2026:10:59:02 +0000] "GET /error HTTP/1.1" 500 41 "-" "curl/8.18.0" "%s"' % self.PUB4),
+            mk(3, '10.20.1.6 - - [08/Oct/2026:10:59:03 +0000] "GET /error HTTP/1.1" 500 41 "-" "Mozilla/5.0" "%s, 10.20.1.6"' % self.PUB4B),
+            mk(4, '10.20.1.5 - - [08/Oct/2026:10:59:04 +0000] "GET /error HTTP/1.1" 500 41 "-" "curl/8.18.0" "%s"' % self.PUB6),
+            mk(5, '10.20.1.5 - - [08/Oct/2026:10:59:05 +0000] "GET / HTTP/1.1" 200 3 "-" "ELB-HealthChecker/2.0" "-" ula=%s lo=127.0.0.1' % self.ULA6),
+        ]
+
+    def test_public_client_ips_are_masked_private_kept(self):
+        p, c = self.r(logs=self._ip_logs())
+        s = json.dumps(c)
+        for ip in (self.PUB4, self.PUB4B, self.PUB6):
+            self.assertNotIn(ip, s)                      # 공인 IPv4·IPv6 는 가려진다
+        self.assertIn("10.20.1.5", s); self.assertIn("10.20.1.6", s)   # VPC 안쪽(ALB) 사설 주소는 남는다
+        self.assertIn(self.ULA6, s); self.assertIn("127.0.0.1", s)      # 사설 IPv6·루프백도 남는다
+        masked = [x["message"] for x in c["logs"] if "<client-ip-" in x["message"]]
+        self.assertEqual(len(masked), 4)
+        # 같은 주소는 같은 번호, 다른 주소는 다른 번호
+        n1 = [m for m in masked if '[08/Oct/2026:10:59:01' in m][0]; n2 = [m for m in masked if '[08/Oct/2026:10:59:02' in m][0]
+        tok = lambda m: m.split('"')[-2]
+        self.assertEqual(tok(n1), tok(n2)); self.assertEqual(tok(n1), "<client-ip-1>")
+        self.assertEqual(c["collection_meta"]["masking"]["distinct_client_ips"], 3)
+        self.assertEqual(c["collection_meta"]["masking"]["replaced"]["client_ip_replacements"], 4)
+        self.assertTrue(c["collection_meta"]["masking"]["client_ip_masked"])
+        self.assertIn("클라이언트 IP 4", p.stdout)
+
+    def test_no_mask_keeps_client_ips(self):
+        p, c = self.r(logs=self._ip_logs(), extra=["--no-mask"])
+        s = json.dumps(c)
+        self.assertIn(self.PUB4, s); self.assertIn(self.PUB6, s)
+        self.assertFalse(c["collection_meta"]["masking"]["client_ip_masked"])
+
+    def test_ip_masker_leaves_timestamps_versions_and_arns_alone(self):
+        keep = ['[08/Oct/2026:10:59:01 +0000]', "00:31:09", "curl/8.18.0", "nginx:1.30", "public.ecr.aws/nginx/nginx:1.30.2",
+                "arn:aws:ecs:ap-northeast-2:<account-id>:task-definition/agentic-devops-dev-app:7", "10:59:01Z", "1.2.3", "300.1.1.1"]
+        counter = {"client_ip_replacements": 0}
+        for s in keep:
+            self.assertEqual(cic._mask_ips(s, counter), s)
+        self.assertEqual(counter["client_ip_replacements"], 0)
+
+    def test_default_region_is_seoul_and_env_overrides(self):
+        self.assertEqual(cic.DEFAULT_REGION, "ap-northeast-2")
+        p, c = self.r(env={"AWS_REGION": "us-east-1", "AWS_DEFAULT_REGION": ""})
+        self.assertEqual(c["collection_meta"]["region"], "us-east-1")       # 영문 판: 환경변수가 먼저
+        p, c = self.r(env={"AWS_REGION": "", "AWS_DEFAULT_REGION": ""})
+        self.assertEqual(c["collection_meta"]["region"], "ap-northeast-2")  # 한국어 판 기본
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

@@ -10,8 +10,9 @@
 # It touches nothing else: no AWS API calls, no resource changes.
 #
 # Recovery needs no script: stop calling /error. With no new 5xx the alarm
-# returns to OK by itself, and an OK message follows. In our us-east-1 test run
-# that took about 7 minutes, so wait several minutes before worrying.
+# returns to OK by itself, and an OK message follows. In our test runs (Seoul
+# and N. Virginia) that took about 6 to 7 minutes, so wait several minutes
+# before worrying.
 #
 # Usage:
 #   ./scripts/inject-failure.sh            # 5 requests, 10 s apart
