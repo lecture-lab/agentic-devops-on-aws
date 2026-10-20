@@ -1,4 +1,5 @@
 """핸들러·방어 시험 — 가짜 DynamoDB·가짜 Bedrock·가짜 전송. 진짜 AWS 를 부르면 시험이 실패한다."""
+import datetime as dt
 import json
 import sys
 import unittest
@@ -13,7 +14,12 @@ import analysis_handler as handler
 CTX = json.loads((HERE / "fixtures" / "incident-context.json").read_text(encoding="utf-8"))
 LONG_1 = (HERE / "fixtures" / "model-k10b-1.txt").read_text(encoding="utf-8")
 ALARM = "agentic-devops-dev-high-5xx"
-T0 = 1_760_000_000.0
+T0 = dt.datetime(2026, 10, 16, 0, 35, 43, tzinfo=dt.timezone.utc).timestamp()   # 기본 알람 시각 + 45초(기다린 뒤)
+
+
+def at(sec):
+    # T0 기준 sec 초 뒤에 막 바뀐 알람 시각(CloudWatch 본문 형식). 기다림 45초를 빼 둔다.
+    return dt.datetime.fromtimestamp(T0 - 45 + sec, dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000+0000")
 SECRET = "AKIA" + "ABCDEFGHIJKLMNOP"
 
 
@@ -106,6 +112,36 @@ class HandlerTest(unittest.TestCase):
             self.assertEqual(handler.run(ev, config(), w.deps())["status"], "ignored")
             self.assertEqual(w.sent, [])
 
+    def test_stale_alarm_is_skipped_before_touching_anything(self):
+        # 킬 스위치로 막혔던 이벤트가 늦게 실행되는 경우(비동기 대기열은 스로틀이면 최대 6시간 재시도)
+        w = World()
+        w.now += 11 * 60
+        self.assertEqual(handler.run(event(), config(), w.deps()), {"status": "skipped", "reason": "stale"})
+        self.assertEqual((w.store.d, w.sent, w.model_calls), ({}, [], 0))
+
+    def test_age_boundary_is_ten_minutes(self):
+        w = World()
+        w.now = T0 - 45 + 600
+        self.assertEqual(handler.run(event(), config(), w.deps())["status"], "sent")
+        w = World()
+        w.now = T0 - 45 + 601
+        self.assertEqual(handler.run(event(), config(), w.deps())["reason"], "stale")
+
+    def test_age_limit_comes_from_config(self):
+        w = World()
+        w.now += 4 * 60
+        self.assertEqual(handler.run(event(), config(max_event_age_s=180), w.deps())["reason"], "stale")
+
+    def test_unreadable_time_is_skipped_closed(self):
+        for bad in ("t1", "2026-10-16T00:34:58", "어제"):        # 시간대 없는 시각도 나이를 모름
+            w = World()
+            self.assertEqual(handler.run(event(sct=bad), config(), w.deps()), {"status": "skipped", "reason": "bad_time"})
+            self.assertEqual((w.store.d, w.sent), ({}, []))
+
+    def test_other_time_formats_from_cloudwatch_are_read(self):
+        for ok in ("2026-10-16T00:34:58.000+0000", "2026-10-16T00:34:58Z", "2026-10-16T00:34:58+00:00"):
+            self.assertEqual(handler.event_age_s(ok, T0), 45.0)
+
     def test_disabled_does_nothing(self):
         w = World()
         self.assertEqual(handler.run(event(), config(enabled=False), w.deps())["status"], "disabled")
@@ -114,24 +150,24 @@ class HandlerTest(unittest.TestCase):
     def test_redelivery_of_same_state_change_is_analyzed_once(self):
         w = World()
         handler.run(event(), config(), w.deps())
-        w.now += 3600                                  # 쿨다운이 지나도 같은 상태 변화는 다시 안 함
+        w.now += 300                                   # 늦은 이벤트 창(10분) 안의 재전달은 중복으로 거름
         r = handler.run(event(), config(), w.deps())
         self.assertEqual(r, {"status": "skipped", "reason": "duplicate"})
         self.assertEqual(len(w.sent), 1)
 
     def test_cooldown_blocks_a_new_alarm_within_15_minutes(self):
         w = World()
-        handler.run(event(sct="t1"), config(), w.deps())
+        handler.run(event(sct=at(0)), config(), w.deps())
         w.now += 600
-        self.assertEqual(handler.run(event(sct="t2"), config(), w.deps())["reason"], "cooldown")
+        self.assertEqual(handler.run(event(sct=at(600)), config(), w.deps())["reason"], "cooldown")
         w.now += 301
-        self.assertEqual(handler.run(event(sct="t3"), config(), w.deps())["status"], "sent")
+        self.assertEqual(handler.run(event(sct=at(901)), config(), w.deps())["status"], "sent")
 
     def test_daily_cap(self):
         w = World()
         results = []
         for i in range(22):
-            results.append(handler.run(event(sct=f"t{i}"), config(cooldown_s=1), w.deps())["status"])
+            results.append(handler.run(event(sct=at(2 * i)), config(cooldown_s=1), w.deps())["status"])
             w.now += 2
         self.assertEqual(results.count("sent"), 20)
         self.assertEqual(results[-1], "skipped")
@@ -157,8 +193,8 @@ class HandlerTest(unittest.TestCase):
 
     def test_rejected_by_cooldown_does_not_keep_the_lock(self):
         w = World()
-        handler.run(event(sct="t1"), config(), w.deps())
-        handler.run(event(sct="t2"), config(), w.deps())            # cooldown
+        handler.run(event(sct=at(0)), config(), w.deps())
+        handler.run(event(sct=at(1)), config(), w.deps())           # cooldown
         self.assertNotIn(guards.LOCK_KEY, w.store.d)
 
     def test_collect_failure_sends_failure_message_without_model_call(self):
@@ -202,7 +238,8 @@ class HandlerTest(unittest.TestCase):
     def test_config_from_env_defaults_off(self):
         c = handler.Config.from_env({})
         self.assertFalse(c.enabled)
-        self.assertEqual((c.cooldown_s, c.daily_cap, c.sleep_s), (900, 20, 45))
+        self.assertEqual((c.cooldown_s, c.daily_cap, c.sleep_s, c.max_event_age_s), (900, 20, 45, 600))
+        self.assertEqual(handler.Config.from_env({"MAX_EVENT_AGE_MINUTES": "3"}).max_event_age_s, 180)
         self.assertTrue(handler.Config.from_env({"ANALYSIS_ENABLED": " TRUE "}).enabled)
 
 

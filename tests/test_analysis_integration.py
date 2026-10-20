@@ -151,7 +151,9 @@ class AnalysisIntegrationTest(unittest.TestCase):
             sys.modules.pop(n, None)
         sys.modules.update(self.saved_modules)
 
-    def event(self, sct="2026-10-16T00:34:58.000+0000"):
+    def event(self, sct=None):
+        # 알람 시각은 «지금 45초 전»(핸들러가 10분 넘은 이벤트는 건너뜀)
+        sct = sct if sct is not None else (dt.datetime.now(dt.timezone.utc) - dt.timedelta(seconds=45)).strftime("%Y-%m-%dT%H:%M:%S.000+0000")
         return {"v": 1, "alarm_name": ALARM, "state": "ALARM", "state_change_time": sct,
                 "sns_timestamp": "2026-10-16T00:34:59.123Z", "sns_message_id": "m-1", "region": "ap-northeast-2"}
 
@@ -193,11 +195,11 @@ class AnalysisIntegrationTest(unittest.TestCase):
         self.assertEqual(self.handler.lambda_handler(self.event(sct=""), self.ctx), {"status": "ignored"})
         self.assertEqual((self.clients["cloudwatch"].seen, self.tg.requests), ([], []))
 
-    def test_bad_time_format_becomes_collect_failure_message(self):
-        r = self.handler.lambda_handler(self.event(sct="not-a-time"), self.ctx)
-        self.assertEqual(r["status"], "sent")
-        self.assertEqual(self.prompts, [])
-        self.assertIn("자동 분석 실패(코드: 수집)", self.tg.requests[0][1]["text"])
+    def test_unreadable_or_stale_time_is_skipped_before_collecting(self):
+        for sct, reason in (("not-a-time", "bad_time"), ("2026-10-16T00:34:58.000+0000", "stale")):
+            r = self.handler.lambda_handler(self.event(sct=sct), self.ctx)
+            self.assertEqual(r, {"status": "skipped", "reason": reason})
+        self.assertEqual((self.clients["cloudwatch"].seen, self.prompts, self.tg.requests), ([], [], []))
 
     def test_disabled_touches_nothing(self):
         with mock.patch.dict(os.environ, {"ANALYSIS_ENABLED": "false"}):

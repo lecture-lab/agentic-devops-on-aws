@@ -1,14 +1,16 @@
 """analysis_handler.py — 분석 Lambda 입구. 알림 Lambda 가 Telegram 발송에 성공한 뒤 비동기로 부른다.
 
-흐름: 입력 확인 → gate(중복·잠금·쿨다운·일일 상한) → 기다림(로그 도착) → 수집 → 분석 → 평문 전송.
+흐름: 입력 확인 → 늦은 이벤트 거름 → gate(중복·잠금·쿨다운·일일 상한) → 기다림(로그 도착) → 수집 → 분석 → 평문 전송.
   * ALARM 만 처리한다. 모르는 알람·모르는 입력 모양은 아무것도 안 하고 끝낸다.
   * 수집·모델·전송은 주입한다. 시험은 가짜로, 운영은 make_deps() 의 진짜로.
   * 로그에는 상태 낱말만 남긴다. 맥락·모델 글·오류 원문은 남기지 않는다.
 의존성: python3 표준 라이브러리 + boto3(Lambda 런타임 내장).
 """
 import dataclasses
+import datetime as dt
 import json
 import os
+import re
 import time
 from typing import Callable
 
@@ -25,6 +27,7 @@ class Config:
     cooldown_s: int
     daily_cap: int
     sleep_s: int
+    max_event_age_s: int = 600    # 알람 시각이 이보다 오래됐으면 건너뛴다(꺼 둔 사이 쌓인 늦은 이벤트 · 이벤트 수명 60초와 이중)
 
     @classmethod
     def from_env(cls, env):
@@ -32,7 +35,8 @@ class Config:
                    alarm_name=env.get("ALARM_NAME", ""),
                    cooldown_s=int(env.get("COOLDOWN_MINUTES", "15")) * 60,
                    daily_cap=int(env.get("DAILY_CAP", "20")),
-                   sleep_s=int(env.get("SLEEP_SECONDS", "45")))
+                   sleep_s=int(env.get("SLEEP_SECONDS", "45")),
+                   max_event_age_s=int(env.get("MAX_EVENT_AGE_MINUTES", "10")) * 60)
 
 
 @dataclasses.dataclass
@@ -54,11 +58,24 @@ def valid_event(event, cfg):
             and event.get("alarm_name") == cfg.alarm_name and bool(event.get("state_change_time")))
 
 
+def event_age_s(state_change_time, now):
+    # 알람 본문 시각(예: 2026-10-16T00:34:58.000+0000)이 몇 초 전인가. 못 읽으면 None.
+    try:
+        t = dt.datetime.fromisoformat(re.sub(r"([+-]\d{2})(\d{2})$", r"\1:\2", state_change_time.replace("Z", "+00:00")))
+        return now - t.timestamp() if t.tzinfo else None
+    except (ValueError, AttributeError):
+        return None
+
+
 def run(event, cfg, deps, remaining_ms=lambda: 10**9):
     if not cfg.enabled:
         log("disabled"); return {"status": "disabled"}
     if not valid_event(event, cfg):
         log("ignored"); return {"status": "ignored"}
+    age = event_age_s(event["state_change_time"], deps.clock())
+    if age is None or age > cfg.max_event_age_s:      # 나이를 모르면 닫힌 쪽으로
+        reason = "bad_time" if age is None else "stale"
+        log("skipped", reason=reason); return {"status": "skipped", "reason": reason}
     ok, reason = guards.gate(deps.store, cfg.alarm_name, event["state_change_time"],
                              cfg.cooldown_s, cfg.daily_cap, now=deps.clock())
     if not ok:
