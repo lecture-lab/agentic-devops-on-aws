@@ -1,0 +1,33 @@
+[HIGH] agentic-devops-dev-app-service incident
+
+What happened
+agentic-devops-dev-app-service에서 00:31:00 UTC 시점에 HTTP 5XX 에러가 6건 발생하여 CloudWatch 알람이 트리거되었습니다. 알람은 1분 주기로 5XX 응답 건수가 1 이상일 때 발생하도록 설정되어 있으며, 해당 시간대에 임계값을 초과했습니다.
+
+Impact
+해당 시간대에 /error 엔드포인트에 대한 요청 6건이 500 Internal Server Error로 응답했습니다. 같은 시간대 전체 요청 8건 중 6건이 실패하였습니다.
+
+Evidence
+- HTTPCode_Target_5XX_Count 메트릭: 00:31:00 UTC에 6.0
+- 요청 패턴: 00:31:00에 8건의 요청 발생
+- 액세스 로그에 /error 경로로의 GET 요청 6건이 모두 500 응답 기록
+- 모든 5XX 에러는 curl/8.18.0 클라이언트의 /error 엔드포인트 요청
+- ECS 서비스 상태: ACTIVE, 원하는 2개 태스크 모두 실행 중, ALB 타겟 2개 모두 healthy
+- CPU 평균 사용률은 모두 0.18% 이하로 정상 범위
+- 서비스는 6.5분 전 배포 완료되었으며 현재 안정적인 상태
+
+Possible cause
+1. /error 엔드포인트에 대한 의도적인 테스트 요청: curl을 통한 반복적인 /error 경로 요청이 로그에 기록되어 있으며, 해당 경로가 에러를 반환하도록 설계된 가능성
+2. 애플리케이션 로직: /error 엔드포인트가 의도적으로 500을 반환하는 엔드포인트일 가능성
+3. 백엔드 연동 실패: 일시적인 업스트림 서비스 오류로 해당 경로에서만 에러 발생
+4. 배포 후 애플리케이션 이상: 6.5분 전 배포된 버전의 특정 엔드포인트 문제
+
+Confidence: LOW
+
+Recommended
+1. /error 엔드포인트의 설계 목적 확인: 해당 경로가 테스트용 에러 엔드포인트인지 실제 기능 경로인지 확인
+2. 애플리케이션 로그에서 5XX 에러에 대한 상세 에러 메시지 검토
+3. 해당 시간대에 백엔드 의존성 상태 및 응답 시간 확인
+4. 같은 시간대 다른 엔드포인트의 정상 응답 여부 재확인
+
+Approval required
+No action executed.

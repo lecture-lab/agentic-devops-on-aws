@@ -1,0 +1,342 @@
+{
+  "incident_id": "inc-20261016T003458Z",
+  "timestamp": "2026-10-16T00:34:58Z",
+  "severity": "HIGH",
+  "severity_basis": "고정 규칙: 알람 상태 ALARM 이면 HIGH, 그 외 UNKNOWN. 평가가 아니라 매핑이다.",
+  "service": {
+    "name": "agentic-devops-dev-app-service",
+    "environment": "dev"
+  },
+  "trigger": {
+    "name": "agentic-devops-dev-high-5xx",
+    "type": "cloudwatch_alarm",
+    "state": "ALARM",
+    "state_reason": "Threshold Crossed: 1 datapoint [6.0 (16/10/26 00:31:00)] was greater than or equal to the threshold (1.0).",
+    "state_updated": "2026-10-16T00:34:58.815000+00:00",
+    "metric": "HTTPCode_Target_5XX_Count",
+    "namespace": "AWS/ApplicationELB",
+    "comparison": "GreaterThanOrEqualToThreshold",
+    "threshold": 1.0,
+    "period_seconds": 60,
+    "evaluation_periods": 1,
+    "statistic": "Sum",
+    "dimensions": {
+      "LoadBalancer": "app/agentic-devops-dev-alb/81e87af6690873f5",
+      "TargetGroup": "targetgroup/agentic-devops-dev-app-tg/1dd086f77bae046b"
+    }
+  },
+  "alarm_history": [
+    {
+      "at": "2026-10-16T00:34:58.815000+00:00",
+      "summary": "Alarm updated from OK to ALARM"
+    },
+    {
+      "at": "2026-10-16T00:28:58.811000+00:00",
+      "summary": "Alarm updated from INSUFFICIENT_DATA to OK"
+    }
+  ],
+  "metrics": {
+    "window": {
+      "start": "2026-10-16T00:19:58Z",
+      "end": "2026-10-16T00:39:58Z",
+      "period_seconds": 60
+    },
+    "target_5xx_count": {
+      "series": [
+        {
+          "t": "2026-10-16T00:31:00+00:00",
+          "v": 6.0
+        }
+      ],
+      "summary": {
+        "points": 1,
+        "sum": 6.0,
+        "max": 6.0
+      }
+    },
+    "target_4xx_count": {
+      "series": [],
+      "summary": null
+    },
+    "request_count": {
+      "series": [
+        {
+          "t": "2026-10-16T00:30:00+00:00",
+          "v": 0.0
+        },
+        {
+          "t": "2026-10-16T00:31:00+00:00",
+          "v": 8.0
+        },
+        {
+          "t": "2026-10-16T00:32:00+00:00",
+          "v": 0.0
+        },
+        {
+          "t": "2026-10-16T00:33:00+00:00",
+          "v": 0.0
+        }
+      ],
+      "summary": {
+        "points": 4,
+        "sum": 8.0,
+        "max": 8.0
+      }
+    },
+    "ecs_cpu_average_percent": {
+      "series": [
+        {
+          "t": "2026-10-16T00:29:00+00:00",
+          "v": 0.18274458746115368
+        },
+        {
+          "t": "2026-10-16T00:30:00+00:00",
+          "v": 0.0029031303711235523
+        },
+        {
+          "t": "2026-10-16T00:31:00+00:00",
+          "v": 0.007950226931522291
+        },
+        {
+          "t": "2026-10-16T00:32:00+00:00",
+          "v": 0.005981008522212505
+        },
+        {
+          "t": "2026-10-16T00:33:00+00:00",
+          "v": 0.004795568995177746
+        }
+      ],
+      "summary": {
+        "points": 5,
+        "sum": 0.20437452228118977,
+        "max": 0.18274458746115368
+      }
+    }
+  },
+  "logs": [
+    {
+      "t": "2026-10-16T00:29:13Z",
+      "message": "2026/10/16 00:29:13 [notice] 1#1: using the \"epoll\" event method"
+    },
+    {
+      "t": "2026-10-16T00:29:13Z",
+      "message": "2026/10/16 00:29:13 [notice] 1#1: nginx/1.30.6"
+    },
+    {
+      "t": "2026-10-16T00:29:13Z",
+      "message": "2026/10/16 00:29:13 [notice] 1#1: built by gcc 14.2.0 (Debian 14.2.0-19) "
+    },
+    {
+      "t": "2026-10-16T00:29:13Z",
+      "message": "2026/10/16 00:29:13 [notice] 1#1: OS: Linux 6.1.188"
+    },
+    {
+      "t": "2026-10-16T00:29:13Z",
+      "message": "2026/10/16 00:29:13 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 65535:65535"
+    },
+    {
+      "t": "2026-10-16T00:29:13Z",
+      "message": "2026/10/16 00:29:13 [notice] 1#1: start worker processes"
+    },
+    {
+      "t": "2026-10-16T00:29:13Z",
+      "message": "2026/10/16 00:29:13 [notice] 1#1: start worker process 7"
+    },
+    {
+      "t": "2026-10-16T00:29:13Z",
+      "message": "2026/10/16 00:29:13 [notice] 1#1: start worker process 8"
+    },
+    {
+      "t": "2026-10-16T00:29:31Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:29:31 +0000] \"GET / HTTP/1.1\" 200 3 \"-\" \"ELB-HealthChecker/2.0\" \"-\""
+    },
+    {
+      "t": "2026-10-16T00:29:32Z",
+      "message": "2026/10/16 00:29:32 [notice] 1#1: using the \"epoll\" event method"
+    },
+    {
+      "t": "2026-10-16T00:29:32Z",
+      "message": "2026/10/16 00:29:32 [notice] 1#1: nginx/1.30.6"
+    },
+    {
+      "t": "2026-10-16T00:29:32Z",
+      "message": "2026/10/16 00:29:32 [notice] 1#1: built by gcc 14.2.0 (Debian 14.2.0-19) "
+    },
+    {
+      "t": "2026-10-16T00:29:32Z",
+      "message": "2026/10/16 00:29:32 [notice] 1#1: OS: Linux 6.1.188"
+    },
+    {
+      "t": "2026-10-16T00:29:32Z",
+      "message": "2026/10/16 00:29:32 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 65535:65535"
+    },
+    {
+      "t": "2026-10-16T00:29:32Z",
+      "message": "2026/10/16 00:29:32 [notice] 1#1: start worker processes"
+    },
+    {
+      "t": "2026-10-16T00:29:32Z",
+      "message": "2026/10/16 00:29:32 [notice] 1#1: start worker process 7"
+    },
+    {
+      "t": "2026-10-16T00:29:32Z",
+      "message": "2026/10/16 00:29:32 [notice] 1#1: start worker process 8"
+    },
+    {
+      "t": "2026-10-16T00:29:41Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:29:41 +0000] \"GET / HTTP/1.1\" 200 3 \"-\" \"ELB-HealthChecker/2.0\" \"-\""
+    },
+    {
+      "t": "2026-10-16T00:30:01Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:30:01 +0000] \"GET / HTTP/1.1\" 200 3 \"-\" \"ELB-HealthChecker/2.0\" \"-\""
+    },
+    {
+      "t": "2026-10-16T00:30:11Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:30:11 +0000] \"GET / HTTP/1.1\" 200 3 \"-\" \"ELB-HealthChecker/2.0\" \"-\""
+    },
+    {
+      "t": "2026-10-16T00:31:09Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:31:09 +0000] \"GET /error HTTP/1.1\" 500 41 \"-\" \"curl/8.18.0\" \"<client-ip-1>\""
+    },
+    {
+      "t": "2026-10-16T00:31:15Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:31:15 +0000] \"GET /error HTTP/1.1\" 500 41 \"-\" \"curl/8.18.0\" \"<client-ip-1>\""
+    },
+    {
+      "t": "2026-10-16T00:31:25Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:31:25 +0000] \"GET /error HTTP/1.1\" 500 41 \"-\" \"curl/8.18.0\" \"<client-ip-1>\""
+    },
+    {
+      "t": "2026-10-16T00:31:35Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:31:35 +0000] \"GET /error HTTP/1.1\" 500 41 \"-\" \"curl/8.18.0\" \"<client-ip-1>\""
+    },
+    {
+      "t": "2026-10-16T00:31:46Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:31:46 +0000] \"GET /error HTTP/1.1\" 500 41 \"-\" \"curl/8.18.0\" \"<client-ip-1>\""
+    },
+    {
+      "t": "2026-10-16T00:31:56Z",
+      "message": "10.20.1.161 - - [16/Oct/2026:00:31:56 +0000] \"GET /error HTTP/1.1\" 500 41 \"-\" \"curl/8.18.0\" \"<client-ip-1>\""
+    }
+  ],
+  "logs_meta": {
+    "window": {
+      "start": "2026-10-16T00:24:58Z",
+      "end": "2026-10-16T00:39:58Z"
+    },
+    "log_group": "/ecs/agentic-devops-dev-app",
+    "events_seen": 66,
+    "returned": 26,
+    "http_status_counts": {
+      "200": 44,
+      "500": 6
+    },
+    "http_5xx_path_counts": {
+      "/error": 6
+    },
+    "selection": "5xx 줄 우선(최대 30) + 그 외 최대 20, 줄당 300자 절단"
+  },
+  "resource_state": {
+    "ecs_service": {
+      "name": "agentic-devops-dev-app-service",
+      "status": "ACTIVE",
+      "desired": 2,
+      "running": 2,
+      "pending": 0,
+      "task_definition": "agentic-devops-dev-app:5"
+    },
+    "ecs_deployments": [
+      {
+        "id": "ecs-svc/0812458851668619787",
+        "status": "PRIMARY",
+        "rollout_state": "COMPLETED",
+        "task_definition": "agentic-devops-dev-app:5",
+        "desired": 2,
+        "running": 2,
+        "created_at": "2026-10-16T09:28:28.617000+09:00",
+        "updated_at": "2026-10-16T09:30:37.801000+09:00"
+      }
+    ],
+    "ecs_recent_events": [
+      {
+        "at": "2026-10-16T09:29:53.223000+09:00",
+        "message": "(service agentic-devops-dev-app-service) has reached a steady state."
+      },
+      {
+        "at": "2026-10-16T09:29:53.222000+09:00",
+        "message": "(service agentic-devops-dev-app-service) (deployment ecs-svc/0812458851668619787) deployment completed."
+      },
+      {
+        "at": "2026-10-16T09:29:31.228000+09:00",
+        "message": "(service agentic-devops-dev-app-service) registered 1 targets in (target-group arn:aws:elasticloadbalancing:ap-northeast-2:<account-id>:targetgroup/agentic-devops-dev-app-tg/1dd086f77bae046b)"
+      },
+      {
+        "at": "2026-10-16T09:29:10.770000+09:00",
+        "message": "(service agentic-devops-dev-app-service) has started 1 tasks: (task 634ebb63bd5043b4a1d3ff7dfca1d07d)."
+      },
+      {
+        "at": "2026-10-16T09:28:47.454000+09:00",
+        "message": "(service agentic-devops-dev-app-service) has started 1 tasks: (task 494a6c3c5aa74fe4a4f00bd2559b64c2)."
+      }
+    ],
+    "task_definition": {
+      "revision": "agentic-devops-dev-app:5",
+      "image": "public.ecr.aws/nginx/nginx:1.30",
+      "command_overridden": true,
+      "registered_at": "2026-10-16T09:25:43.265000+09:00"
+    },
+    "alb_target_health": {
+      "healthy": 2
+    }
+  },
+  "recent_changes": [
+    {
+      "type": "task_definition_registered",
+      "at": "2026-10-16T09:25:43.265000+09:00",
+      "ref": "agentic-devops-dev-app:5"
+    },
+    {
+      "type": "deployment",
+      "at": "2026-10-16T09:28:28.617000+09:00",
+      "minutes_ago": 6.5,
+      "ref": "agentic-devops-dev-app:5",
+      "rollout_state": "COMPLETED"
+    }
+  ],
+  "collection_warnings": [
+    {
+      "source": "metrics.target_4xx_count",
+      "status": "empty",
+      "detail": "HTTPCode_Target_4XX_Count 데이터 포인트 없음(2026-10-16T00:19:58Z~2026-10-16T00:39:58Z) — 0 이라는 뜻이 아님"
+    },
+    {
+      "source": "logs",
+      "status": "lag",
+      "detail": "사건이 5분 안이라 CloudWatch Logs 가 아직 다 도착하지 않았을 수 있음 — «로그에 없다»는 «일어나지 않았다»가 아님"
+    }
+  ],
+  "collection_meta": {
+    "tool": "collect-incident-context",
+    "version": "0.1",
+    "script_sha256_16": "3646873cb7a3b904",
+    "read_only": true,
+    "region": "ap-northeast-2",
+    "collected_at": "2026-10-16T00:35:22Z",
+    "aws_calls": [
+      "cloudwatch describe-alarm-history",
+      "cloudwatch describe-alarms",
+      "cloudwatch get-metric-statistics",
+      "ecs describe-services",
+      "ecs describe-task-definition",
+      "elbv2 describe-target-health",
+      "logs filter-log-events"
+    ],
+    "masking": {
+      "account_id_masked": true,
+      "replaced": {
+        "account_ids": 1,
+        "secret_shapes": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+[HIGH] agentic-devops-dev-app-service incident
+
+What happened
+agentic-devops-dev-app-service에서 HTTP 500 에러가 발생하여 알람이 트리거되었습니다. 00:31:00 UTC 시점에 6개의 5XX 응답이 기록되었으며, 이는 임계값 1.0을 초과하였습니다.
+
+Impact
+로드밸런서를 통해 서비스에 도달하는 요청 중 일부가 5XX 에러로 응답하고 있습니다. 00:31:00 구간에 총 8개의 요청 중 6개가 500 에러를 반환했습니다.
+
+Evidence
+- CloudWatch 알람 agentic-devops-dev-high-5xx가 ALARM 상태로 변경됨 (00:34:58 UTC)
+- HTTPCode_Target_5XX_Count 메트릭이 6.0 (00:31:00 UTC)
+- 로그에서 GET /error 경로에 대한 6건의 HTTP 500 응답 기록 (00:31:09~00:31:56)
+- ECS 서비스 상태: ACTIVE, 원하는 태스크 2개, 실행 중 2개
+- ALB 대상 상태: 2개 모두 healthy
+- ECS CPU 사용률: 최대 0.18% 수준으로 낮음
+- 배포 완료됨 (task definition agentic-devops-dev-app:5, 6분 전)
+
+Possible cause
+1. 애플리케이션 코드 또는 설정 변경: 최근 배포된 task definition revision 5에서 /error 엔드포인트 처리 로직 오류 (HIGH 확신도)
+2. 테스트 요청: curl 도구로 /error 경로에 대한 의도적 테스트 요청 (MEDIUM 확신도)
+3. 백엔드 서비스 의존성 장애: 애플리케이션이 호출하는 외부 서비스 장애 (LOW 확신도)
+4. 일시적 리소스 부족: CPU/메모리 스트레스 (LOW 확신도 - CPU 사용률이 매우 낮음)
+
+Confidence: MEDIUM
+
+Recommended
+1. 최근 배포된 task definition agentic-devops-dev-app:5의 /error 엔드포인트 관련 코드 변경사항 검토
+2. 애플리케이션 로그에서 00:31:00 UTC 전후의 에러 메시지 및 스택 트레이스 확인
+3. 해당 시간대 요청 패턴 분석 및 /error 엔드포인트 호출 원인 파악
+4. 현재 상황이 지속되는지 모니터링 (이후 요청에서 5XX 발생 여부)
+
+Approval required
+No action executed.
