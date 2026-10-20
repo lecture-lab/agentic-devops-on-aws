@@ -177,7 +177,7 @@ resource "aws_iam_role_policy" "analysis" {
 resource "aws_lambda_function" "analysis" {
   function_name = local.analysis_name
   role          = aws_iam_role.analysis.arn
-  handler       = "handler.lambda_handler"
+  handler       = "analysis_handler.lambda_handler"
   runtime       = "python3.12"
   timeout       = 120
   memory_size   = 256
