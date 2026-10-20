@@ -171,5 +171,33 @@ class StubbedBoto3Tests(unittest.TestCase):
         json.dumps(ctx)
 
 
+
+class CollectForAlertTests(unittest.TestCase):
+    """Lambda 입구: 이벤트의 StateChangeTime 문자열을 사건 시각으로 쓰고 ctx 딕셔너리만 돌려준다."""
+
+    def clients(self):
+        class Boom(Exception):
+            response = {"Error": {"Code": "ResourceNotFoundException"}}
+        return {"cloudwatch": FakeClient({"describe_alarms": {"MetricAlarms": []}, "describe_alarm_history": {"AlarmHistoryItems": []},
+                                          "get_metric_statistics": {"Datapoints": []}}),
+                "logs": FakeClient({"filter_log_events": {"events": []}}), "ecs": FakeClient({"describe_services": Boom()})}
+
+    def test_returns_a_dict_and_uses_the_cloudwatch_state_change_time_format(self):
+        aws = collector.AwsBoto3(REGION, clients=self.clients())
+        ctx = collector.collect_for_alert(aws, ARGS["alarm"], "2026-10-20T11:00:00.000+0000", ARGS["cluster"], ARGS["service"], ARGS["log_group"], now=NOW)
+        self.assertIsInstance(ctx, dict)
+        self.assertEqual(ctx["timestamp"], "2026-10-20T11:00:00Z")
+        self.assertEqual(ctx["incident_id"], "inc-20261020T110000Z")
+        self.assertEqual(ctx["collection_meta"]["region"], REGION)
+        self.assertTrue(ctx["collection_meta"]["masking"]["account_id_masked"])
+        self.assertIn("collection_warnings", ctx)
+        json.dumps(ctx)
+
+    def test_empty_state_change_time_is_refused(self):
+        aws = collector.AwsBoto3(REGION, clients=self.clients())
+        for bad in ("", None):
+            with self.assertRaises(ValueError):
+                collector.collect_for_alert(aws, ARGS["alarm"], bad, ARGS["cluster"], ARGS["service"], ARGS["log_group"], now=NOW)
+
 if __name__ == "__main__":
     unittest.main()

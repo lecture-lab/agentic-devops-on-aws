@@ -124,6 +124,7 @@ resource "aws_lambda_function" "telegram_alerts" {
       TELEGRAM_CHAT_ID              = var.telegram_chat_id
       ALERTS_ENABLED                = tostring(var.telegram_alerts_enabled)
       ALERTS_ENABLED_AFTER_EPOCH    = var.telegram_alerts_enabled_after_epoch
+      ANALYSIS_FUNCTION_ARN         = aws_lambda_function.analysis.arn
     }
   }
 

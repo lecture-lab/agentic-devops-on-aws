@@ -440,3 +440,14 @@ def collect_incident_context(aws, alarm, cluster, service, log_group, region, no
     """Lambda 용 한 번 호출: 모으고, 가리고, meta 를 붙여 (ctx, counter) 를 돌려준다."""
     ctx, _ = build_context(aws, alarm, cluster, service, log_group, now, at)
     return finalize(ctx, aws, region, now, mask, source_sha16(os.path.abspath(__file__)))
+
+
+def collect_for_alert(aws, alarm_name, state_change_time, cluster, service, log_group, mask=True, now=None):
+    """알림 Lambda 가 넘긴 이벤트로 한 번 호출하는 Lambda 용 입구: ctx(딕셔너리)만 돌려준다.
+    state_change_time 은 알람 본문의 StateChangeTime(예: 2026-10-16T00:34:58.000+0000)이고 사건 시각으로 쓴다."""
+    if not state_change_time:
+        raise ValueError("state_change_time 이 비어 있음")
+    at = parse_time(state_change_time)
+    now = now or dt.datetime.now(dt.timezone.utc).replace(microsecond=0)
+    ctx, _ = collect_incident_context(aws, alarm_name, cluster, service, log_group, aws.region, now, at=at, mask=mask)
+    return ctx

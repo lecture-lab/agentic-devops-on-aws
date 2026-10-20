@@ -43,6 +43,8 @@ import boto3
 SECRET_ARN = os.environ["TELEGRAM_BOT_TOKEN_SECRET_ARN"]
 CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 ALERTS_ENABLED = os.environ.get("ALERTS_ENABLED", "false").strip().lower() == "true"
+# 발송에 성공한 ALARM 뒤에 부를 자동 1차 분석 Lambda(analysis.tf). 비어 있으면 호출하지 않는다.
+ANALYSIS_FUNCTION_ARN = os.environ.get("ANALYSIS_FUNCTION_ARN", "")
 
 try:
     # Unset/invalid -> +inf, so "event is older than cutoff" is always
@@ -64,6 +66,7 @@ log = logging.getLogger()
 log.setLevel(logging.INFO)
 
 _secrets = boto3.client("secretsmanager")
+_lambda = boto3.client("lambda")
 
 
 def _parse_epoch(iso_ts: str) -> float:
@@ -103,6 +106,20 @@ def _bot_token() -> str:
     return _secrets.get_secret_value(SecretId=SECRET_ARN)["SecretString"]
 
 
+def _start_analysis(message: dict, sns: dict) -> None:
+    """Telegram 발송에 성공한 ALARM 건에 한해 분석 Lambda 를 비동기로 부른다.
+    알림 본문 원문(NewStateReason 등)은 넘기지 않는다. 호출이 실패해도 알림 결과에는 영향이 없다."""
+    if not ANALYSIS_FUNCTION_ARN or message.get("NewStateValue") != "ALARM":
+        return
+    payload = {"v": 1, "alarm_name": message["AlarmName"], "state": "ALARM",
+               "state_change_time": message.get("StateChangeTime", ""), "sns_timestamp": sns.get("Timestamp", ""),
+               "sns_message_id": sns.get("MessageId", ""), "region": os.environ.get("AWS_REGION", "")}
+    try:
+        _lambda.invoke(FunctionName=ANALYSIS_FUNCTION_ARN, InvocationType="Event", Payload=json.dumps(payload).encode("utf-8"))
+    except Exception:  # noqa: BLE001 - 알림은 이미 나갔다. 원문은 로그에 남기지 않는다.
+        log.error("Analysis start failed (details withheld)")
+
+
 def handler(event, _context):
     for record in event["Records"]:
         sns = record["Sns"]
@@ -112,6 +129,7 @@ def handler(event, _context):
             log.info("Skipping SNS record: %s", reason)
             continue
         _send(_format(message))
+        _start_analysis(message, sns)
     return {"statusCode": 200}
 
 

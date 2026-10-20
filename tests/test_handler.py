@@ -16,12 +16,13 @@ from unittest import mock
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "notifications" / "telegram"))
 
 
-def _reload_handler(*, enabled: str, after_epoch: str = ""):
+def _reload_handler(*, enabled: str, after_epoch: str = "", analysis_arn: str = ""):
     os.environ.setdefault("AWS_DEFAULT_REGION", "us-east-1")
     os.environ["TELEGRAM_BOT_TOKEN_SECRET_ARN"] = "arn:aws:secretsmanager:us-east-1:000000000000:secret:test"
     os.environ["TELEGRAM_CHAT_ID"] = "0"
     os.environ["ALERTS_ENABLED"] = enabled
     os.environ["ALERTS_ENABLED_AFTER_EPOCH"] = after_epoch
+    os.environ["ANALYSIS_FUNCTION_ARN"] = analysis_arn
     if "handler" in sys.modules:
         return importlib.reload(sys.modules["handler"])
     return importlib.import_module("handler")
@@ -127,6 +128,73 @@ class ExceptionRedactionTests(unittest.TestCase):
             self.assertNotIn(sentinel_token, raised_text)
             self.assertIsNone(ctx.exception.__cause__)  # `from None` -- no chained original exception
 
+
+
+ANALYSIS_ARN = "arn:aws:lambda:us-east-1:000000000000:function:analysis"
+ALARM_BODY = {"AlarmName": "agentic-devops-dev-high-5xx", "NewStateValue": "ALARM",
+              "StateChangeTime": "2026-10-16T00:34:58.000+0000", "NewStateReason": "Threshold Crossed: secret-ish detail"}
+
+
+def _event(message):
+    return {"Records": [{"Sns": {"Message": _json.dumps(message), "Timestamp": VALID_SNS_TIMESTAMP, "MessageId": "m-1"}}]}
+
+
+class AnalysisStartTests(unittest.TestCase):
+    """알림 발송에 성공한 ALARM 뒤에만 분석 Lambda 를 비동기로 부른다."""
+
+    def test_alarm_after_a_successful_send_starts_the_analysis_with_a_minimal_payload(self):
+        h = _reload_handler(enabled="true", after_epoch="0", analysis_arn=ANALYSIS_ARN)
+        with mock.patch.object(h, "_send") as fake_send, mock.patch.object(h, "_lambda") as fake_lambda:
+            self.assertEqual(h.handler(_event(ALARM_BODY), None), {"statusCode": 200})
+        fake_send.assert_called_once()
+        fake_lambda.invoke.assert_called_once()
+        kw = fake_lambda.invoke.call_args.kwargs
+        self.assertEqual(kw["FunctionName"], ANALYSIS_ARN)
+        self.assertEqual(kw["InvocationType"], "Event")
+        payload = _json.loads(kw["Payload"].decode("utf-8"))
+        self.assertEqual(payload["v"], 1)
+        self.assertEqual(payload["alarm_name"], "agentic-devops-dev-high-5xx")
+        self.assertEqual(payload["state_change_time"], "2026-10-16T00:34:58.000+0000")
+        self.assertEqual(payload["sns_message_id"], "m-1")
+        self.assertNotIn("NewStateReason", _json.dumps(payload))          # 알림 본문 원문은 넘기지 않는다
+        self.assertNotIn("secret-ish", _json.dumps(payload))
+
+    def test_ok_state_sends_the_notice_but_never_starts_an_analysis(self):
+        h = _reload_handler(enabled="true", after_epoch="0", analysis_arn=ANALYSIS_ARN)
+        with mock.patch.object(h, "_send") as fake_send, mock.patch.object(h, "_lambda") as fake_lambda:
+            h.handler(_event({**ALARM_BODY, "NewStateValue": "OK"}), None)
+        fake_send.assert_called_once()
+        fake_lambda.invoke.assert_not_called()
+
+    def test_failed_send_means_no_analysis(self):
+        h = _reload_handler(enabled="true", after_epoch="0", analysis_arn=ANALYSIS_ARN)
+        with mock.patch.object(h, "_send", side_effect=RuntimeError("telegram send failed")), mock.patch.object(h, "_lambda") as fake_lambda:
+            with self.assertRaises(RuntimeError):
+                h.handler(_event(ALARM_BODY), None)
+        fake_lambda.invoke.assert_not_called()
+
+    def test_gated_off_alerts_never_start_an_analysis(self):
+        h = _reload_handler(enabled="false", after_epoch="0", analysis_arn=ANALYSIS_ARN)
+        with mock.patch.object(h, "_send") as fake_send, mock.patch.object(h, "_lambda") as fake_lambda:
+            h.handler(_event(ALARM_BODY), None)
+        fake_send.assert_not_called()
+        fake_lambda.invoke.assert_not_called()
+
+    def test_without_an_arn_nothing_is_called(self):
+        h = _reload_handler(enabled="true", after_epoch="0", analysis_arn="")
+        with mock.patch.object(h, "_send"), mock.patch.object(h, "_lambda") as fake_lambda:
+            h.handler(_event(ALARM_BODY), None)
+        fake_lambda.invoke.assert_not_called()
+
+    def test_a_failing_invoke_does_not_break_the_notice_and_leaks_nothing(self):
+        h = _reload_handler(enabled="true", after_epoch="0", analysis_arn=ANALYSIS_ARN)
+        with mock.patch.object(h, "_send") as fake_send, mock.patch.object(h, "_lambda") as fake_lambda:
+            fake_lambda.invoke.side_effect = Exception("AccessDenied for " + ANALYSIS_ARN)
+            with self.assertLogs(level="ERROR") as logs:
+                self.assertEqual(h.handler(_event(ALARM_BODY), None), {"statusCode": 200})
+        fake_send.assert_called_once()
+        self.assertNotIn(ANALYSIS_ARN, "\n".join(logs.output))
+        self.assertIn("Analysis start failed", "\n".join(logs.output))
 
 if __name__ == "__main__":
     unittest.main()
