@@ -213,9 +213,13 @@ resource "aws_lambda_function" "analysis" {
 }
 
 resource "aws_lambda_function_event_invoke_config" "analysis" {
-  # 비동기 호출이 실패해도 자동으로 다시 부르지 않는다 — 재시도가 모델을 두 번 부르는 것을 막는다.
-  function_name          = aws_lambda_function.analysis.function_name
-  maximum_retry_attempts = 0
+  # 비동기 호출이 «함수 오류»로 실패해도 자동으로 다시 부르지 않는다 — 재시도가 모델을 두 번 부르는 것을 막는다.
+  # 그러나 retry 0 은 *스로틀(429)* 에는 적용되지 않는다: 킬 스위치(예약 동시성 0)로 막힌 이벤트는 대기열에 남아
+  # 기본 6시간 동안 다시 시도되고, 스위치를 다시 켜면 늦게 실행되어 모델이 불린다.
+  # 그래서 이벤트 수명을 60초(허용 하한)로 줄여, 스위치가 꺼져 있던 동안의 이벤트는 버려지게 한다.
+  function_name                = aws_lambda_function.analysis.function_name
+  maximum_retry_attempts       = 0
+  maximum_event_age_in_seconds = 60
 }
 
 # 알림 Lambda 가 이 함수 하나만 부를 수 있게 한다(알림 Lambda 역할에 문장 하나 추가).
