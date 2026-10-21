@@ -13,9 +13,9 @@ variable "analysis_enabled" {
 }
 
 variable "analysis_model_id" {
-  description = "Bedrock inference profile ID. Haiku 4.5 is available in Seoul only through the global profile, so the request may be processed outside Seoul."
+  description = "Bedrock inference profile ID (as of 2026-10-21). Claude Sonnet 4.6 is available in Seoul only through the global profile, so the request may be processed outside Seoul. Fallback: global.anthropic.claude-haiku-4-5-20251001-v1:0 (changing this one variable also changes the IAM resources below)."
   type        = string
-  default     = "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+  default     = "global.anthropic.claude-sonnet-4-6"
 }
 
 variable "analysis_cooldown_minutes" {
