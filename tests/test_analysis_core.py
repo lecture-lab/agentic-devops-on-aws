@@ -1,5 +1,6 @@
 """코어 시험 — AWS·모델 없이. 실행: python3 -m unittest discover -s tests
-실제 입력: 0단계(서울 Haiku 4.5) 응답 셋과 그때 쓴 마스킹된 맥락(0단계 시험 10-20)."""
+실제 입력: 0단계(서울 Haiku 4.5) 응답 셋과 그때 쓴 마스킹된 맥락(0단계 시험 10-20). 운영 모델은 Sonnet 4.6(10-21 확정)이고,
+이 응답들은 후처리가 받는 모델 글 모양의 예로만 씁니다."""
 import json
 import sys
 import unittest
@@ -112,6 +113,15 @@ class PostprocessTest(unittest.TestCase):
         ctx = {"severity": "HIGH", "service": {"name": "svc"}, "metrics": {"count": 6.0}}
         self.assertNotIn("검증 안 된 수치", A.postprocess("What happened\n오류 6건", ctx))
         self.assertIn("검증 안 된 수치 1개(맥락에 없음): 7", A.postprocess("What happened\n오류 7건", ctx))
+        # 정수 부분으로는 설명 안 되는 같은 값: 맥락 0.18 · 모델 0.180
+        ctx2 = {"severity": "HIGH", "service": {"name": "svc"}, "metrics": {"cpu": 0.18}}
+        self.assertNotIn("검증 안 된 수치", A.postprocess("What happened\nCPU 0.180%", ctx2))
+
+    def test_time_with_fractional_seconds_in_context_is_not_flagged(self):
+        # 맥락은 소수 초가 붙은 한국 시각, 모델은 UTC 로 옮겨 씀 — 43 은 맞는 값(10-21 Sonnet 4.6 응답)
+        ctx = {"severity": "HIGH", "service": {"name": "svc"}, "recent_changes": [{"at": "2026-10-16T09:25:43.265000+09:00"}]}
+        self.assertNotIn("검증 안 된 수치", A.postprocess("What happened\n00:25:43Z 에 등록", ctx))
+        self.assertIn("검증 안 된 수치 1개(맥락에 없음): 44", A.postprocess("What happened\n00:25:44Z 에 등록", ctx))
 
     def test_list_numbers_are_not_flagged(self):
         msg = A.postprocess("Recommended\n17. 로그 확인\n18) 배포 확인", CTX)

@@ -157,7 +157,8 @@ def numbers_in(text):
 def unverified_numbers(body, ctx):
     # 본문의 숫자가 맥락에 글자 그대로(또는 같은 값으로) 있는지 본다. 목록 번호(1. 2.)는 뺀다.
     ctx_text = json.dumps(ctx, ensure_ascii=False)
-    known = set(numbers_in(ctx_text))
+    # 소수의 정수 부분도 아는 값으로 — 맥락의 「09:25:43.265000」을 모델이 「00:25:43Z」로 옮기면 43 이 맞는 값(10-21 Sonnet 응답에서 오탐)
+    known = set(numbers_in(ctx_text)) | set(re.findall(r"(?<![\d.])\d+", ctx_text))
     known_values = {float(n) for n in known}
     found = []
     for ln in body.splitlines():

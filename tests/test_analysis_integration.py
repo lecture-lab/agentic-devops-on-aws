@@ -34,7 +34,7 @@ Recommended
 1. 로그 확인
 Approval required
 No action executed."""
-ENV = {"ANALYSIS_ENABLED": "true", "AWS_REGION": "ap-northeast-2", "MODEL_ID": "global.anthropic.claude-haiku-4-5-20251001-v1:0",
+ENV = {"ANALYSIS_ENABLED": "true", "AWS_REGION": "ap-northeast-2", "MODEL_ID": "global.anthropic.claude-sonnet-4-6",
        "TABLE": "analysis-state", "ALARM_NAME": ALARM, "CLUSTER": "agentic-devops-dev-cluster",
        "SERVICE": "agentic-devops-dev-app-service", "LOG_GROUP": "/ecs/agentic-devops-dev-app",
        "TELEGRAM_CHAT_ID": "42", "TELEGRAM_BOT_TOKEN_SECRET_ARN": f"arn:aws:secretsmanager:ap-northeast-2:{ACCOUNT}:secret:bot",
