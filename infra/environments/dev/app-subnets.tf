@@ -4,9 +4,7 @@
 # as the database tier (see rds.tf) rather than renamed, so this change
 # does not touch any already-provisioned resource. These new subnets are
 # the dedicated application tier called for by ADR-001's 3-tier-per-AZ
-# design (Public / Application Private / Database Private) and by
-# docs/prompts/create-compute-database.md ("ECS Service ... in the
-# private application subnets").
+# design (Public / Application Private / Database Private).
 resource "aws_subnet" "app" {
   count             = 2
   vpc_id            = aws_vpc.main.id

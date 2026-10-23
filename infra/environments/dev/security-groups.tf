@@ -1,5 +1,5 @@
 # Security groups implementing the Internet -> ALB -> App -> DB chain
-# required by ADR-001 and docs/prompts/create-compute-database.md.
+# required by ADR-001.
 #
 # Each SG is created bare (no inline ingress/egress blocks) and paired
 # with explicit aws_vpc_security_group_ingress_rule /

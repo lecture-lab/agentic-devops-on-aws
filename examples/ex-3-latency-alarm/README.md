@@ -1,6 +1,6 @@
 # EX-3 — 다른 알람 조건 추가하기 (Latency p99)
 
-Section 6(Real Alerting) 직후 실습. 스펙: `docs/curriculum/example-projects-v0.1.md` §EX-3.
+Section 6(Real Alerting) 직후 실습.
 
 `alarm.tf`는 `infra/environments/dev/alarms.tf`의 기존 `aws_cloudwatch_metric_alarm.high_5xx`와 같은 SNS 토픽(`aws_sns_topic.alerts`)·같은 ALB/Target Group을 참조하되, 지표만 5xx 카운트 대신 `TargetResponseTime`의 p99로 바꾼 것이다.
 

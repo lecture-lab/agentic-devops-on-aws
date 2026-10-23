@@ -17,9 +17,8 @@
 # managed by Terraform state in this same directory. To tear it all down:
 #   cd infra/environments/dev
 #   terraform plan -destroy      # review first
-#   terraform destroy            # requires the same human-approval gate
-#                                 # as apply (scripts/apply-reviewed-plan.sh
-#                                 # in this repo); not run by this agent.
+#   terraform destroy            # requires the same human approval as
+#                                 # apply; not run by this agent.
 # There is no manual cleanup step outside Terraform -- no snapshots are
 # kept (skip_final_snapshot = true) and no data is expected to persist.
 

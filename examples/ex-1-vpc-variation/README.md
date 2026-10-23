@@ -1,6 +1,6 @@
 # EX-1 — AI가 만든 변경을 읽어라 (미니 VPC 변형)
 
-Section 2(Terraform for Agentic Infrastructure) 직후 실습. 스펙: `docs/curriculum/example-projects-v0.1.md` §EX-1.
+Section 2(Terraform for Agentic Infrastructure) 직후 실습.
 
 ## 시작 상태
 
