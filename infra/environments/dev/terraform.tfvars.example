@@ -1,6 +1,0 @@
-# Copy this file to terraform.tfvars and adjust if needed.
-# Pick ONE region line. The default (no tfvars) is the Korean edition: Seoul.
-# aws_region  = "ap-northeast-2"   # Korean edition  -- Seoul (default)
-# aws_region  = "us-east-1"        # English edition -- N. Virginia
-# environment = "dev"
-# iam_name_suffix = ""   # leave empty; only if the default IAM role name already exists in this account
