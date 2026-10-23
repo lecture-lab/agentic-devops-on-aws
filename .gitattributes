@@ -1,0 +1,5 @@
+# 줄바꿈을 LF로 고정 — Windows(Git for Windows 기본 core.autocrlf=true)에서 clone 해도
+# 셸 스크립트·훅이 CRLF 로 바뀌어 bash 가 «\r» 오류를 내지 않게 한다.
+*.sh text eol=lf
+*.py text eol=lf
+.githooks/* text eol=lf
