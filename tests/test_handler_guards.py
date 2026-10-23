@@ -288,6 +288,26 @@ class MakeDepsTest(unittest.TestCase):
             self.assertEqual(seen[f"client:{name}"][1]["region_name"], "ap-northeast-2")
 
 
+    def test_bedrock_client_makes_exactly_one_attempt(self):
+        # 모델 호출은 한 번만(호출당 비용 상한). 진짜 botocore 로 클라이언트를 만들어(네트워크 0) 정규화된 값을 본다.
+        try:
+            import botocore.session
+        except ImportError:
+            self.skipTest("botocore 없음")
+        import types
+        from unittest import mock
+        seen = {}
+        fake_boto3 = types.SimpleNamespace(client=lambda name, **kw: seen.setdefault(name, kw))
+        fake_collector = types.SimpleNamespace(AwsBoto3=lambda region: None, collect_for_alert=lambda *a, **kw: CTX)
+        fake_send = types.SimpleNamespace(send_plain=lambda *a: None)
+        with mock.patch.dict(sys.modules, {"boto3": fake_boto3, "collector": fake_collector, "send_plain": fake_send}):
+            handler.make_deps(self.ENV)
+        real = botocore.session.get_session().create_client(
+            "bedrock-runtime", region_name="ap-northeast-2", aws_access_key_id="x", aws_secret_access_key="x",
+            config=seen["bedrock-runtime"]["config"])
+        self.assertEqual(real.meta.config.retries["total_max_attempts"], 1)
+
+
 class BedrockInvokerTest(unittest.TestCase):
     def test_converse_request_and_result(self):
         class C:

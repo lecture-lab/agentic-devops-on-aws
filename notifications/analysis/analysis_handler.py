@@ -101,7 +101,7 @@ def run(event, cfg, deps, remaining_ms=lambda: 10**9):
 
 
 def bedrock_invoker(client, model_id):
-    # Bedrock Converse 한 번. 도구 없음 · 재시도는 클라이언트 설정에서 끔. 오류는 코드 이름만 올린다.
+    # Bedrock Converse 한 번. 도구 없음 · 재시도는 클라이언트 설정에서 끔(make_deps). 오류는 코드 이름만 올린다.
     from botocore.exceptions import ReadTimeoutError, ConnectTimeoutError, ClientError
 
     def invoke(prompt, max_tokens):
@@ -128,7 +128,9 @@ def make_deps(env):
 
     region = env["AWS_REGION"]                     # Lambda 런타임이 넣어 줌
     br = boto3.client("bedrock-runtime", region_name=region,
-                      config=BotoConfig(retries={"max_attempts": 1}, read_timeout=60, connect_timeout=10))
+                      # total_max_attempts = 첫 요청 포함 총 시도 수. 1 = 재시도 없음.
+                      # (max_attempts 는 «재시도» 횟수라 1 이면 최대 두 번 불림)
+                      config=BotoConfig(retries={"total_max_attempts": 1}, read_timeout=60, connect_timeout=10))
     secrets = boto3.client("secretsmanager", region_name=region)
 
     def collect(event):
