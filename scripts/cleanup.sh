@@ -17,6 +17,6 @@ echo "== What destroying them would look like =="
 
 echo
 echo "Review the plan above. To actually destroy these resources, run:"
-echo "  $TF_BIN apply .cleanup.destroyplan"
+echo "  cd infra/environments/dev && $TF_BIN apply .cleanup.destroyplan"
 echo
 echo "This script stops here on purpose -- it does not apply anything for you."
