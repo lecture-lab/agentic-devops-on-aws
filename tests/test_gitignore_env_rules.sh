@@ -30,6 +30,14 @@ assert_ignored ".env.local"
 assert_ignored ".env.production"
 assert_not_ignored ".env.example"
 
+# Saved plan files (terraform plan -out=...) embed state values -- including
+# the RDS master password -- in plain text, so they must never be tracked.
+assert_ignored "tfplan"
+assert_ignored "tfplan-bad"
+assert_ignored "dev.tfplan"
+assert_ignored ".cleanup.destroyplan"
+assert_ignored ".build/anything"
+
 if [ "$fail" -ne 0 ]; then
   echo "gitignore env-rule test FAILED"
   exit 1
