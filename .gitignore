@@ -8,6 +8,11 @@ crash.*.log
 !*.tfvars.example
 *.destroyplan
 .cleanup.destroyplan
+# Saved plan files (terraform plan -out=...) embed state values, including
+# sensitive ones such as the RDS master password, in plain text.
+tfplan
+tfplan-*
+*.tfplan
 .build/
 
 # Secrets / local env -- .env.example is the one exception, tracked on purpose.
