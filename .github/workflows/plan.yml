@@ -1,0 +1,68 @@
+# plan — PR 의 Terraform 변경이 무엇을 만들고 바꾸고 지우는지 미리 계산하는 워크플로.
+# PR 이 열리거나 갱신될 때 infra 폴더가 바뀐 경우만. 조회용 역할로 OIDC 로그인 → fmt · init · validate · plan 만. apply·destroy 없음.
+name: plan
+on:
+  pull_request:
+    paths:
+      - "infra/**"
+      - "notifications/**"
+      - "scripts/collector.py"
+      - "app/web/nginx.conf"
+      - ".github/workflows/plan.yml"
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+concurrency:
+  group: plan-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: infra/environments/dev
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/${{ vars.PLAN_ROLE_NAME }}
+          aws-region: ${{ vars.AWS_REGION }}
+          mask-aws-account-id: true
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.17.0
+          terraform_wrapper: false
+      - run: terraform version
+      - run: terraform fmt -check -recursive
+      - name: terraform init
+        env:
+          STATE_BUCKET: ${{ vars.STATE_BUCKET }}
+          AWS_REGION_VAR: ${{ vars.AWS_REGION }}
+        run: >-
+          terraform init -input=false
+          -backend-config="bucket=${STATE_BUCKET}"
+          -backend-config="key=dev/terraform.tfstate"
+          -backend-config="region=${AWS_REGION_VAR}"
+          -backend-config="use_lockfile=true"
+      - run: terraform validate
+      - run: terraform plan -input=false -lock-timeout=60s -out=tfplan
+      - name: PR 요약(추가·변경·삭제 개수와 리소스 주소만; ARN·계정 번호 없음)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          terraform show -json tfplan > "${RUNNER_TEMP}/plan.json"
+          {
+            echo "### terraform plan 요약 (조회용 역할 · 저장소 코드가 바뀐 PR)"
+            jq -r '
+              [.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"])] as $c
+              | "추가 \([$c[] | select(.change.actions | index("create"))] | length) · 변경 \([$c[] | select(.change.actions == ["update"])] | length) · 삭제 \([$c[] | select(.change.actions | index("delete"))] | length) · 교체 \([$c[] | select((.change.actions | index("delete")) and (.change.actions | index("create")))] | length) (교체는 추가·삭제에 각각 포함 — terraform plan 의 to add / to destroy 와 같은 셈법)",
+                "",
+                ($c[] | "- `\(.address)` — \(.change.actions | join("/"))")
+            ' "${RUNNER_TEMP}/plan.json"
+          } > "${RUNNER_TEMP}/summary.md"
+          gh pr comment "${PR_NUMBER}" --body-file "${RUNNER_TEMP}/summary.md"
