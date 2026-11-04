@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 20
     outputs:
       plan_sha256: ${{ steps.save.outputs.plan_sha256 }}
+      build_sha256: ${{ steps.save.outputs.build_sha256 }}
     defaults:
       run:
         working-directory: infra/environments/dev
@@ -60,10 +61,17 @@ jobs:
           echo "plan_sha256=${sha}" >> "$GITHUB_OUTPUT"
           echo "::notice title=승인할 tfplan::sha256 ${sha} (커밋 ${GITHUB_SHA:0:12}) — 이 값을 실행 요약의 plan 개수·주소와 함께 확인한 뒤 승인"
           aws s3 cp tfplan "s3://${STATE_BUCKET}/plans/${GITHUB_SHA}/tfplan" --only-show-errors
+          # Lambda 코드 zip(.build/)은 plan 때 data.archive_file 이 만든다. apply Job 은 새 러너라 이 파일이 없으므로
+          # tfplan 과 같은 위치에 묶어 올리고 sha256 을 남긴다(저장 plan 이 이 zip 의 경로와 해시를 담고 있다).
+          tar -czf "${RUNNER_TEMP}/build.tgz" .build
+          bsha=$(sha256sum "${RUNNER_TEMP}/build.tgz" | cut -d' ' -f1)
+          echo "build_sha256=${bsha}" >> "$GITHUB_OUTPUT"
+          aws s3 cp "${RUNNER_TEMP}/build.tgz" "s3://${STATE_BUCKET}/plans/${GITHUB_SHA}/build.tgz" --only-show-errors
           terraform show -json tfplan > "${RUNNER_TEMP}/plan.json"
           {
             echo "### 승인할 plan (커밋 ${GITHUB_SHA:0:12})"
             echo "- tfplan sha256: \`${sha}\`"
+            echo "- .build 묶음 sha256: \`${bsha}\`"
             jq -r '
               [.resource_changes[]? | select(.change.actions != ["no-op"] and .change.actions != ["read"])] as $c
               | "- 추가 \([$c[] | select(.change.actions | index("create"))] | length) · 변경 \([$c[] | select(.change.actions == ["update"])] | length) · 삭제 \([$c[] | select(.change.actions | index("delete"))] | length) · 교체 \([$c[] | select((.change.actions | index("delete")) and (.change.actions | index("create")))] | length) (교체는 추가·삭제에 각각 포함 — terraform plan 의 to add / to destroy 와 같은 셈법)",
@@ -111,4 +119,15 @@ jobs:
           actual=$(sha256sum tfplan | cut -d' ' -f1)
           test "${actual}" = "${EXPECTED_SHA}" || { echo "tfplan sha256 불일치 — 적용하지 않음"; exit 1; }
           echo "tfplan sha256 일치: ${actual}"
+      - name: plan Job 이 만든 .build 묶음(Lambda zip)을 내려받고 sha256 확인 뒤 푼다
+        env:
+          STATE_BUCKET: ${{ vars.STATE_BUCKET }}
+          EXPECTED_BUILD_SHA: ${{ needs.plan.outputs.build_sha256 }}
+        run: |
+          aws s3 cp "s3://${STATE_BUCKET}/plans/${GITHUB_SHA}/build.tgz" "${RUNNER_TEMP}/build.tgz" --only-show-errors
+          actual=$(sha256sum "${RUNNER_TEMP}/build.tgz" | cut -d' ' -f1)
+          test "${actual}" = "${EXPECTED_BUILD_SHA}" || { echo ".build 묶음 sha256 불일치 — 적용하지 않음"; exit 1; }
+          tar -xzf "${RUNNER_TEMP}/build.tgz"
+          test -s .build/incident-analysis.zip && test -s .build/telegram-handler.zip
+          echo ".build 묶음 sha256 일치·압축 해제: ${actual}"
       - run: terraform apply -input=false -lock-timeout=60s tfplan
