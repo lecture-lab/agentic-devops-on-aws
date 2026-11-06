@@ -54,11 +54,3 @@ This runs `git config core.hooksPath .githooks` and the scanner's self-test,
 which activates the secret-scan pre-commit hook (`scripts/secret-scan.py
 --staged`). Git config isn't copied by `git clone`, so this is needed once per
 clone -- there's no CI running it automatically yet.
-
-**Known gap, not yet resolved:** an earlier draft of the secret scanner
-briefly committed a fixture file containing secret-*shaped* (fake, not
-real) strings. `scripts/secret-scan.py --full` (history-inclusive audit
-mode) will keep flagging that commit until history itself is rewritten,
-which hasn't happened yet -- it's a deliberate action, not something to
-do casually on a shared repo. Resolve this before the repo is ever
-distributed to students.
